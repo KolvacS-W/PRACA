@@ -544,7 +544,7 @@ const App: React.FC = () => {
               onRunClassCode={handleRunClassCode} // Pass the handler
                />
             </div>
-
+            <div className="code-editor-container">
             <CustomCodeEditor
               ngrok_url_sonnet = {ngrok_url_sonnet}
               usercode={versions.find(version => version.id === currentVersionId)!.usercode}
@@ -563,6 +563,7 @@ const App: React.FC = () => {
               setActiveTab={setActiveTab} // Pass setActiveTab
               onRunUserCode={handleRunUserCode} // Pass the handler
               />
+              </div>
             <ResultViewer 
             ngrok_url_sonnet = {ngrok_url_sonnet} 
             activeTab={activeTab} 

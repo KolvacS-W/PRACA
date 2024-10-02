@@ -2318,7 +2318,6 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
           ref={editorRef}
           onChange={(evn) => setuserJs(evn.target.value)}
         />
-        <button onClick={() => onRunUserCode({ js: userjs })}>Run User Code</button>
         </div>
       );
     } else if (activeTab === 'html') {
@@ -2357,11 +2356,11 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
       // onContextMenu={handleRightClick}
     >
       {loading && <div className="loading-container"><ReactLoading type="spin" color="#007bff" height={50} width={50} /></div>}
-      <div className="tabs">
+      {/* <div className="tabs">
         <button className="tab-button" onClick={() => setActiveTab(activeTab === 'js' ? 'html' : 'js')}>
           Switch to {activeTab === 'js' ? 'Backend HTML' : 'User JS'}
         </button>
-      </div>
+      </div> */}
       {showCheckSVGPieceWidget && <CheckSVGPieceWidget svgCode={svgCodeText_checkpiece} pieceCodeName={currentSelectedSVG} />}
       {showCheckWholeSVGWidget && <CheckWholeSVGWidget svgCode={svgCodeText_checkwholesvg} pieceCodeName={currentSelectedSVG} />}
       {showModifyObjWidget && <ModifyObjWidget />}
@@ -2374,7 +2373,7 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
       
       <div>
       {renderEditor()}
-      
+      <button onClick={() => onRunUserCode({ js: userjs })}>Run User Code</button>
       </div>      {/* <div className="button-group">
         
       </div> */}

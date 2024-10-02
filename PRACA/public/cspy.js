@@ -112,6 +112,7 @@ class AnthropicGen {
             this.loadKey();
         } else {
             AnthropicGen.apiKey = key;
+            console.log('key provided', AnthropicGen, AnthropicGen.apiKey)
         }
         return(AnthropicGen.instance);
     }

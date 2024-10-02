@@ -594,8 +594,9 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
         onChange={(evn) => setClassCode({ js: evn.target.value })}
       />
       {/* Add Run Button */}
-      <button onClick={onRunClassCode}>Run Class Code</button>
+      
     </div>
+    <button onClick={onRunClassCode}>Run Class Code</button>
     </div>
   );
   

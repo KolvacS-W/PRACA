@@ -257,7 +257,7 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG() {
+            async getSVG(name = '') {
                 if (this.svgString) {
                     console.log("Returning cached SVG");
                     return super.getSVG();
@@ -301,6 +301,34 @@ class CSPYCompiler {
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                     this.setSVG(resp);
                 });
+
+                //added logic to name instance and store its svgcode in react
+                // If the name is not provided, generate a default name
+                if (!name) {
+                    name = 'newobj' + window.newobjID.toString(); // Default to "newobj" + newobjID
+                    window.newobjID = window.newobjID + 1; // Increment the newobjID for the next object
+                }
+                const codename = name;
+                // Send the message to update the reusable element list
+                window.parent.postMessage({
+                    type: 'UPDATE_REUSEABLE',
+                    codename: codename,
+                    codetext: this.svgString
+                }, '*');
+                console.log('Sent UPDATE_REUSEABLE message with codename:', codename);
+
+                // Wait for the confirmation after sending the message
+                await new Promise((resolve) => {
+                    const messageHandler = (event) => {
+                        if (event.data.type === 'UPDATE_REUSEABLE_CONFIRMED' && event.data.codename === codename) {
+                            window.currentreuseableSVGElementList = event.data.reuseableSVGElementList;
+                            console.log('Received UPDATE_REUSEABLE_CONFIRMED for codename:', window.currentreuseableSVGElementList);
+                            window.removeEventListener('message', messageHandler);
+                            resolve(); // Resolve the promise to continue execution
+                        }
+                    };
+                    window.addEventListener('message', messageHandler);
+                });                
                 return(this.svgString);
             }
 
@@ -332,13 +360,13 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG() {
+            async getSVG(name = '') {
                 if (this.svgString) {
                     console.log("Returning cached SVG");
                     return super.getSVG();
                 }
                 if (this.svgTemplate) {
-                    return this.fillTemplate();
+                    return await this.fillTemplate(name);
                 }
 
                 this.svgString = "";
@@ -374,7 +402,7 @@ class CSPYCompiler {
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                     this.setTemplate(resp);
                 });
-                return this.fillTemplate();
+                return await this.fillTemplate(name);
             }
 
             setTemplate(templateString) {
@@ -383,7 +411,7 @@ class CSPYCompiler {
                 this.svgTemplate = templateString;
             }
 
-            fillTemplate() {
+            async fillTemplate(name = '') {
                 String.prototype.interpolate = function(params) {
                     const names = Object.keys(params);
                     const vals = Object.values(params);
@@ -404,7 +432,36 @@ class CSPYCompiler {
 
                 const template = this.svgTemplate;
                 this.svgString = template.interpolate(tvals);
-                return this.svgString;
+                //added logic to name instance and store its svgcode in react
+                // If the name is not provided, generate a default name
+                
+                if (!name) {
+                    name = 'newobj' + window.newobjID.toString(); // Default to "newobj" + newobjID
+                    window.newobjID = window.newobjID + 1; // Increment the newobjID for the next object
+                }
+                console.log('creating name:', name)
+                const codename = name;
+                // Send the message to update the reusable element list
+                window.parent.postMessage({
+                    type: 'UPDATE_REUSEABLE',
+                    codename: codename,
+                    codetext: this.svgString
+                }, '*');
+                console.log('Sent UPDATE_REUSEABLE message with codename:', codename);
+
+                // Wait for the confirmation after sending the message
+                await new Promise((resolve) => {
+                    const messageHandler = (event) => {
+                        if (event.data.type === 'UPDATE_REUSEABLE_CONFIRMED' && event.data.codename === codename) {
+                            window.currentreuseableSVGElementList = event.data.reuseableSVGElementList;
+                            console.log('Received UPDATE_REUSEABLE_CONFIRMED for codename:', window.currentreuseableSVGElementList);
+                            window.removeEventListener('message', messageHandler);
+                            resolve(); // Resolve the promise to continue execution
+                        }
+                    };
+                    window.addEventListener('message', messageHandler);
+                });                
+                return(this.svgString);
             }
 
             update(...propValues) {

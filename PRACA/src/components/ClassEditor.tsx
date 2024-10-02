@@ -30,6 +30,8 @@ const ClassEditor: React.FC<ClassEditorProps> = ({
 }) => {
 const editorRef = useRef<HTMLTextAreaElement>(null);
   // const [codeactiveTab, setActiveTab] = useState(activeTab);
+  const componentRef = useRef<HTMLDivElement>(null);
+
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [showGenerateOption, setShowGenerateOption] = useState(false);
 
@@ -81,11 +83,18 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      var clickedOutside = true;
+      if (true) {
+        console.log('call click outside')
+        var clickedOutside = true;
+        // Check if the click is inside the generate option widget
+        const generateOptionWidget = document.getElementById('class-generate-option-widget');
+        if (generateOptionWidget && generateOptionWidget.contains(event.target as Node)) {
+          clickedOutside = false;
+        }
     
       // Check if the click is inside any of the autocomplete widgets
       optionLevels.forEach((_, levelIndex) => {
-        const widgetElement = document.getElementById(`classautocomplete-widget-${levelIndex}`);
+        const widgetElement = document.getElementById(`class-autocomplete-widget-${levelIndex}`);
         if (widgetElement && widgetElement.contains(event.target as Node)) {
           clickedOutside = false;
         }
@@ -97,7 +106,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
       }
     
       // Check if the click is inside any of the autocomplete widgets
-      const autocompleteWidgets = document.querySelectorAll('.classautocomplete-widget');
+      const autocompleteWidgets = document.querySelectorAll('.class-autocomplete-widget');
       autocompleteWidgets.forEach((widget) => {
         if (widget.contains(event.target as Node)) {
           clickedOutside = false;
@@ -112,6 +121,8 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
         setShowAutocomplete(false);
         setShowGenerateOption(false);
       }
+      }
+      
     };
     
     
@@ -120,7 +131,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  });
+  }, []);
 
 
 
@@ -421,8 +432,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
   const ClassGenerateOptionWidget = ({ hintKeywords }: { hintKeywords: string }) => (
     <div
       id="class-generate-option-widget"
-      ref={widgetRef}
-      className="generate-option-widget"
+      className="class-generate-option-widget"
       style={{
         position: 'absolute',
         top: autocompletePosition.top,
@@ -478,8 +488,8 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
   
     return (
       <div
-        id={`classautocomplete-widget-${levelIndex}`}
-        className="classautocomplete-widget"
+        id={`class-autocomplete-widget-${levelIndex}`}
+        className="class-autocomplete-widget"
         style={{
           position: 'absolute',
           top: optionLevels[levelIndex]?.position.top || autocompletePosition.top,
@@ -564,6 +574,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div
+      ref={componentRef}
       className="class-editor"
       onKeyDown={handleKeyDown}
       onDoubleClick={handleDoubleClick}

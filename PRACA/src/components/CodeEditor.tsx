@@ -47,6 +47,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   setActiveTab, // Received from parent
   onRunUserCode
 }) => {
+  const componentRef = useRef<HTMLDivElement>(null);
   const [backendhtml, setbackendHtml] = useState(backendcode.html);
   const [userjs, setuserJs] = useState(usercode.js);
   // const [codeactiveTab, setActiveTab] = useState(activeTab);
@@ -124,111 +125,119 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   // }, [showModifyObjWidget]);
   
 
-  // useEffect(() => {
-  //   const handleClickOutside = (event: MouseEvent) => {
-  //     var clickedOutside = true;
-  //     console.log('handleclick outside', showModifyObjWidget)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (componentRef.current) {
+        var clickedOutside = true;
+      console.log('handleclick outside', showModifyObjWidget)
+          // Check if the click is inside the generate option widget
+      const generateOptionWidget = document.getElementById('code-generate-option-widget');
+      if (generateOptionWidget && generateOptionWidget.contains(event.target as Node)) {
+        clickedOutside = false;
+      }
+      
+        // Check if the click is inside any of the autocomplete widgets
+        optionLevels.forEach((_, levelIndex) => {
+          const widgetElement = document.getElementById(`autocomplete-widget-${levelIndex}`);
+          if (widgetElement && widgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        });
+      
+        // Check if the click is inside the generate option widget
+        if (widgetRef.current && widgetRef.current.contains(event.target as Node)) {
+          clickedOutside = false;
+        }
+      
+        // Check if the click is inside any of the autocomplete widgets
+        const autocompleteWidgets = document.querySelectorAll('.autocomplete-widget');
+        autocompleteWidgets.forEach((widget) => {
+          if (widget.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        });
+      
+        // Check if the click is inside the coordinate widget (if it's shown)
+        if (showCoordcomplete) {
+          const coordWidgetElement = widgetRef.current;
+          if (coordWidgetElement && coordWidgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        }
+      
+        // Check if the click is inside the modify object widget (if it's shown)
+        if (showModifyObjWidget) {
+          console.log('check showModifyObjWidget')
+          const modifyObjWidgetElement = document.querySelector('.modify-obj-widget');
+          if (modifyObjWidgetElement && modifyObjWidgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        }
+      
+        if (showCheckSVGPieceWidget) {
+          console.log('check showCheckSVGPieceWidget')
+          const CheckSVGPieceWidgetElement = document.querySelector('.check-svg-piece-widget');
+          if (CheckSVGPieceWidgetElement && CheckSVGPieceWidgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        }
+      
+        if (showCheckWholeSVGWidget) {
+          console.log('check showCheckWholeSVGWidget')
+          const showCheckWholeSVGWidgetElement = document.querySelector('.check-svg-piece-widget');
+          if (showCheckWholeSVGWidgetElement && showCheckWholeSVGWidgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          }
+        }
+      
+        // Check if the click is outside the cached object widget (and only close if the click is outside)
+        if (showCachedObjWidget) {
+          console.log('check showcachedobjwidget')
+          const showCachedObjWidgetElement = document.querySelector('.cached-obj-widget');
+          if (showCachedObjWidgetElement && showCachedObjWidgetElement.contains(event.target as Node)) {
+            clickedOutside = false;
+          } else {
+            setShowCachedObjWidget(false);
+          }
+        }
+      
+        // If the click was outside all widgets, close the others
+        if (clickedOutside) {
+          console.log('Clicked outside');
+          // setOptionLevels([]);
+          // setShowAutocomplete(false);
+          // setShowGenerateOption(false);
+          // setShowCoordcomplete(false);
+          // setShowModifyObjWidget(false);
+          setVersions(prevVersions => {
+            const updatedVersions = prevVersions.map(version => {
+              const updatedHighlightedSVGPieceList = [];
     
-  //     // Check if the click is inside any of the autocomplete widgets
-  //     optionLevels.forEach((_, levelIndex) => {
-  //       const widgetElement = document.getElementById(`autocomplete-widget-${levelIndex}`);
-  //       if (widgetElement && widgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     });
-    
-  //     // Check if the click is inside the generate option widget
-  //     if (widgetRef.current && widgetRef.current.contains(event.target as Node)) {
-  //       clickedOutside = false;
-  //     }
-    
-  //     // Check if the click is inside any of the autocomplete widgets
-  //     const autocompleteWidgets = document.querySelectorAll('.autocomplete-widget');
-  //     autocompleteWidgets.forEach((widget) => {
-  //       if (widget.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     });
-    
-  //     // Check if the click is inside the coordinate widget (if it's shown)
-  //     if (showCoordcomplete) {
-  //       const coordWidgetElement = widgetRef.current;
-  //       if (coordWidgetElement && coordWidgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     }
-    
-  //     // Check if the click is inside the modify object widget (if it's shown)
-  //     if (showModifyObjWidget) {
-  //       console.log('check showModifyObjWidget')
-  //       const modifyObjWidgetElement = document.querySelector('.modify-obj-widget');
-  //       if (modifyObjWidgetElement && modifyObjWidgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     }
-    
-  //     if (showCheckSVGPieceWidget) {
-  //       console.log('check showCheckSVGPieceWidget')
-  //       const CheckSVGPieceWidgetElement = document.querySelector('.check-svg-piece-widget');
-  //       if (CheckSVGPieceWidgetElement && CheckSVGPieceWidgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     }
-    
-  //     if (showCheckWholeSVGWidget) {
-  //       console.log('check showCheckWholeSVGWidget')
-  //       const showCheckWholeSVGWidgetElement = document.querySelector('.check-svg-piece-widget');
-  //       if (showCheckWholeSVGWidgetElement && showCheckWholeSVGWidgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       }
-  //     }
-    
-  //     // Check if the click is outside the cached object widget (and only close if the click is outside)
-  //     if (showCachedObjWidget) {
-  //       console.log('check showcachedobjwidget')
-  //       const showCachedObjWidgetElement = document.querySelector('.cached-obj-widget');
-  //       if (showCachedObjWidgetElement && showCachedObjWidgetElement.contains(event.target as Node)) {
-  //         clickedOutside = false;
-  //       } else {
-  //         setShowCachedObjWidget(false);
-  //       }
-  //     }
-    
-  //     // If the click was outside all widgets, close the others
-  //     if (clickedOutside) {
-  //       console.log('Clicked outside');
-  //       setOptionLevels([]);
-  //       setShowAutocomplete(false);
-  //       setShowGenerateOption(false);
-  //       setShowCoordcomplete(false);
-  //       // setShowModifyObjWidget(false);
-  //       setVersions(prevVersions => {
-  //         const updatedVersions = prevVersions.map(version => {
-  //           const updatedHighlightedSVGPieceList = [];
-  
-  //           if (version.id === currentVersionId) {
-  //             // Check if there's already an entry with the same codeText and update it, or append a new one
-  //             return { ...version, highlightedSVGPieceList: updatedHighlightedSVGPieceList, };
-  //           }
-  //           return version;
-  //         });
-  //         return updatedVersions;
-  //       });
-  //       setSvgCodeText('');
-  //       setShowCheckSVGPieceWidget(false);
-  //       setShowCheckWholeSVGWidget(false);
-  //       setShowModifyObjButton(false);
-  //       setButtonchoice('');
-  //     }
-  //   };
+              if (version.id === currentVersionId) {
+                // Check if there's already an entry with the same codeText and update it, or append a new one
+                return { ...version, highlightedSVGPieceList: updatedHighlightedSVGPieceList, };
+              }
+              return version;
+            });
+            return updatedVersions;
+          });
+          setSvgCodeText('');
+          setShowCheckSVGPieceWidget(false);
+          setShowCheckWholeSVGWidget(false);
+          setShowModifyObjButton(false);
+          // setButtonchoice('');
+        }
+      }
+      
+    };
     
     
 
-  //   document.addEventListener('mousedown', handleClickOutside);
-  //   return () => {
-  //     document.removeEventListener('mousedown', handleClickOutside);
-  //   };
-  // }, [showModifyObjWidget, showCheckSVGPieceWidget, optionLevels, showAutocomplete, showGenerateOption, showCoordcomplete]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // const saveVersionToHistory = (currentVersionId: string) => {
   //   setVersions((prevVersions) => {
@@ -649,7 +658,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     <div
       id="code-generate-option-widget"
       ref={widgetRef}
-      className="generate-option-widget"
+      className="code-generate-option-widget"
       style={{
         position: 'absolute',
         top: autocompletePosition.top,
@@ -2350,6 +2359,7 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
 
   return (
     <div
+      ref={componentRef}
       className="code-editor"
       onKeyDown={handleKeyDown}
       // onDoubleClick={handleDoubleClick}

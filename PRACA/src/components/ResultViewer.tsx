@@ -510,7 +510,7 @@ if (event.data.type === 'GET_AnnotatedPieceList') {
                       object.placeObj(window.canvas, coord, scale, tl, tr, bl, br)
                     }
                     </script>
-                    <script src="/oldlib.js"></script>
+                    <script src="/cspy.js"></script>
               </body>
               </html>
             `);

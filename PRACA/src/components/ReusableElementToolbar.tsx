@@ -197,7 +197,7 @@ const ReusableElementToolbar: React.FC<ReusableElementToolbarProps> = ({
       onMouseLeave={handleMouseLeave}
     >
       <div className="reusable-elements">
-        <div className="input-group">
+        {/* <div className="input-group">
           <input
             type="text"
             value={inputValue}
@@ -207,7 +207,7 @@ const ReusableElementToolbar: React.FC<ReusableElementToolbarProps> = ({
           <button onClick={() => currentVersionId && handleAddElement(currentVersionId)} disabled={loading}>
             {loading ? 'Loading...' : 'Add'}
           </button>
-        </div>
+        </div> */}
         {currentVersionId !== null && versions.find(version => version.id === currentVersionId)!.reuseableSVGElementList.map((element, index) => (
           <div
             key={index}

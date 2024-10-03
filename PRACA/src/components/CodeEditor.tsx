@@ -1278,8 +1278,17 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             // Add the modified entry (which overwrites any existing entry with the same codeText)
             updatedModifyPieceList.push(modifiedEntry);
             console.log('check moedifypiece prompts', modifiedEntry)
-            const cachedObjects = JSON.parse((sessionStorage.getItem('cachedobjects')))
-            updateobject_modifypieces(modifiedEntry, cachedObjects[currentSelectedSVG])
+            // const cachedObjects = JSON.parse((sessionStorage.getItem('cachedobjects')))
+            //find current svg code
+            const svgcode = currentVersion.reuseableSVGElementList.find(item => item.codeName === currentSelectedSVG)?.codeText;
+              
+              if (!svgcode) {
+                console.warn(`Item with codeName "${codeName}" not found in reuseableSVGElementList`);
+                return null;
+              }
+              // console.log('svgcode', svgcode)
+          
+            updateobject_modifypieces(modifiedEntry, svgcode)
             return { ...version, modifyPieceList: updatedModifyPieceList, highlightedSVGPieceList: updatedHighlightedSVGPieceList, };
           }
           return version;
@@ -1288,8 +1297,49 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       });
       
     };
+
+    const generatewithAPI = async (prompt: string, callback: (response: string) => void) => {
+  
+      try {
+        if (!api_key) {
+          throw new Error("AnthropicGen API key not set");
+        }
     
-    async function updateobject_modifypieces(modifiedEntry , currentobject){
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            "anthropic-dangerous-direct-browser-access": "true", 
+          },
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 1024,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                ],
+              },
+            ],
+          }),
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        const genresp = data.content[0].text;
+        callback(genresp);
+      } catch (err) {
+        console.error('Error in generatewithAPI:', err);
+      }
+    };
+    
+    async function updateobject_modifypieces(modifiedEntry , svgcode: string){
       // Create a new list: piececode by getting codeText using this.piecemodify elements as codeName from window.currentreuseablesvgpieces
           let piececode = modifiedEntry.pieces.map(codeName => {
             const currentVersion = versions.find(version => version.id === currentVersionId);
@@ -1303,188 +1353,95 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         // For each element A in piececode and element B in piecemodify, create a prompt
         piececode.forEach((codePiece, index) => {
             const modification = modifiedEntry.pieceprompts[index];
-            modifyprompt += `Make modification:` +  modification + ` to svg code piece:` + codePiece+`. `;
+            modifyprompt += ` for svg code piece:` + codePiece+`, ` +  modification ;
         });
 
-          // Clone the object from currentVersion or cachedObjectsLog based on currentSelectedSVG
-  const currentVersion = versions.find(version => version.id === currentVersionId);
-  const cachedObjectsLog = JSON.parse(sessionStorage.getItem('cachedobjects')) || {};
-  
-  // Find the object in reuseableSVGElementList
-  let OriginalObject_reuseableSVGElementList = currentVersion.reuseableSVGElementList.find(item => item.codeName === currentSelectedSVG);
+        // Clone the object from currentVersion or cachedObjectsLog based on currentSelectedSVG
+        const currentVersion = versions.find(version => version.id === currentVersionId);
+        // const cachedObjectsLog = JSON.parse(sessionStorage.getItem('cachedobjects')) || {};
+        
+        // Find the object in reuseableSVGElementList
+        let OriginalObject_reuseableSVGElementList = currentVersion.reuseableSVGElementList.find(item => item.codeName === currentSelectedSVG);
 
-  if (!OriginalObject_reuseableSVGElementList) {
-    console.error('Original object not found for codeName:', currentSelectedSVG);
-    return;
-  }
+        if (!OriginalObject_reuseableSVGElementList) {
+          console.error('Original object not found for codeName:', currentSelectedSVG);
+          return;
+        }
 
-  // Clone the original object and create a variation
-  const clonedObject_reuseableSVGElementList = { ...OriginalObject_reuseableSVGElementList };
-  const OriginalCodeName_reuseableSVGElementList = OriginalObject_reuseableSVGElementList.codeName;
-  clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_variation`; // Append variation to original codeName
-    // console.log('new check', currentVersion, currentVersion?.cachedobjectslog)
-    // Find the object in cachedObjectsLog
-    let OriginalObject_cachedObjectsLog = cachedObjectsLog[currentSelectedSVG];
+        // Clone the original object and create a variation
+        const clonedObject_reuseableSVGElementList = { ...OriginalObject_reuseableSVGElementList };
+        const OriginalCodeName_reuseableSVGElementList = OriginalObject_reuseableSVGElementList.codeName;
+        clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_variation`; // Append variation to original codeName
+          // console.log('new check', currentVersion, currentVersion?.cachedobjectslog)
+          // Find the object in cachedObjectsLog
+          // let OriginalObject_cachedObjectsLog = cachedObjectsLog[currentSelectedSVG];
 
-    if (!OriginalObject_cachedObjectsLog) {
-      console.error('Original object not found for codeName:', currentSelectedSVG);
-      return;
-    }
-  
-        console.log('check before calling api',  currentobject.templatecode, Object.values(currentobject.parameters).slice(0, -1))
+          // if (!OriginalObject_cachedObjectsLog) {
+          //   console.error('Original object not found for codeName:', currentSelectedSVG);
+          //   return;
+          // }
+
         var APIprompt = ''
-        var existingcode = currentobject.templatecode
-        console.log('check array', Object.values(currentobject.parametercontents).slice(0, -1))
-        //have params
-        if(Object.values(currentobject.parameters).slice(0, -1).length >0){
-          APIprompt = `you will be given an svg template code generated by this rule: write me svg code to create a svg image of ` + currentobject.basic_prompt +`. Make the svg image as detailed as possible and as close to the description as possible.  
-      Furthermore, process the generated svg code into a svg code template, with the given a list of parameter names, make the returned svg code a template with certain parameters as text placeholders made by {parameter name}. 
-      For example, parameter list: roof height, window color; resulting svg template:
-      <svg viewBox="0 0 200 200">
-      <rect x="50" y="70" width="100" height="80" fill="brown" /> <!-- House body -->
-      <polygon points="50,70 100,{roof height} 150,70" fill="red" /> <!-- Roof -->
-      <rect x="65" y="90" width="20" height="20" fill="{window color}" /> <!-- Window 1 -->
-      <rect x="115" y="90" width="20" height="20" fill="{window color}" /> <!-- Window 2 -->
-      <rect x="90" y="120" width="20" height="30" fill="black" /> <!-- Door -->
-      </svg>.
-      
-      Notice that only one parameter name and nothing else can be inside {}. Replace the whole parameter (e.g., fill = "#e0d0c0" to fill = "{parameter name}") instead of just part of it (e.g., fill = "#e0d0c0" to fill = "#{parameter name}"). Return svg code template for this parameter list:` + Object.values(currentobject.parameters).slice(0, -1).join(', ')+`. Do not include any background in generated svg. 
-      The svg code template must be able to satify the requirements of the parameters by simply replacing the placeholders, instead of other manual modifications (e.g., 'window number' can be modified by simply replacing {window number} to some data, instead of needing to repeat window element manually)
-      Make sure donot include anything other than the final svg code template in your response.
-      This is the svg template code generated by the above rule: `+ existingcode
-    
-      +`Now, you are going to make these modifications to the given svg template: `+ modifyprompt +`
-       and give me an updated svg template. Make sure donot include anything other than the svg template code in your response
-      `
-        }
-        //no params
-        else{
-          APIprompt = 'Modify an existing svg code: '+existingcode+ ', to create a ' + currentobject.basic_prompt +'. Make these modifications on specific svg elements: ' + modifyprompt +'. Do not include any background in generated svg. As long as the svg follows the description, make as little change as possible other than the specific svg elements mentioned above. Make sure donot include anything other than the svg code in your response.';                                
-        }
+        var existingcode = svgcode
+
+        APIprompt = 'Modify an existing svg code: '+existingcode+ ', make these modifications on specific svg elements: ' + modifyprompt +'. Do not include any background in generated svg. As long as the svg follows the description, make as little change as possible other than the specific svg elements mentioned above. Make sure donot include anything other than the svg code in your response.';                                
+
         console.log(APIprompt)
+
         try {
-          const response = await axios.post(ngrok_url_sonnet, {
-            prompt: APIprompt
-          }, {
-            headers: {
-              'Content-Type': 'application/json'
-            }
+          await generatewithAPI(APIprompt, (content) => 
+          {            
+              var updatedcontent = content.slice();
+              // Update the cloned object with the new SVG code
+                clonedObject_reuseableSVGElementList.codeText = updatedcontent;
+
+                // Replace or add the cloned object back to the reuseableSVGElementList
+                var updatedVersion = {
+                  ...currentVersion,
+                  reuseableSVGElementList: [
+                    ...currentVersion.reuseableSVGElementList.filter(item => item.codeName !== clonedObject_reuseableSVGElementList.codeName),
+                    clonedObject_reuseableSVGElementList
+                  ],
+                  highlightedSVGPieceList: []
+                };
+                const newKey = `${currentSelectedSVG}_variation`;
+
+                // const updatedCachedObjectsLog = {
+                //   ...cachedObjectsLog,
+                //   [newKey]: { ...OriginalObject_cachedObjectsLog, objname: newKey, svgcode: updatedcontent, templatecode: content } // Add or replace the 'newvariation' entry
+                // };                
+                
+                // Update cachedobjectslog and reuseableSVGElementList again if necessary
+                // updatedVersion = {
+                //   ...updatedVersion, // Start with the previously updated version
+                //   cachedobjectslog: updatedCachedObjectsLog,
+                //   highlightedSVGPieceList: []
+                // };
+
+                // Store the updated cached objects back into sessionStorage
+                // sessionStorage.setItem('cachedobjects', JSON.stringify(updatedCachedObjectsLog));
+
+                setVersions(prevVersions => {
+                  const updatedVersions = prevVersions.map(version => {
+                    // Ensure `id` is always defined with a default value
+                    const versionId = version.id ?? 'default-id'; // Provide a default value if `id` is undefined
+                    
+                    // If the versionId matches the currentVersionId, update the version
+                    if (versionId === currentVersionId) {
+                      return { ...updatedVersion, id: versionId }; // Use the updated version and ensure the id is set
+                    }
+                
+                    // Otherwise, return the version unchanged but ensure the id is defined
+                    return { ...version, id: versionId };
+                  });
+                
+                  // Return the updated versions array
+                  return updatedVersions;
+                });
           });
-    
-          const data = response.data;
-          const content = data?.content;
-          console.log('Content from API call:', content);
-    
-          if (content) {
-            //have params
-            if(Object.values(currentobject.parameters).slice(0, -1).length >0){
-              var updatedcontent = content.slice();
-              Object.values(currentobject.parameters).slice(0, -1).forEach((param, index) => {
-                  const placeholder = '{' + param + '}';
-                  updatedcontent = updatedcontent.replace(new RegExp(placeholder, 'g'), Object.values(currentobject.parametercontents).slice(0, -1)[index]);
-              });
-
-              // Update the cloned object with the new SVG code
-                clonedObject_reuseableSVGElementList.codeText = updatedcontent;
-
-                // Replace or add the cloned object back to the reuseableSVGElementList
-                var updatedVersion = {
-                  ...currentVersion,
-                  reuseableSVGElementList: [
-                    ...currentVersion.reuseableSVGElementList.filter(item => item.codeName !== clonedObject_reuseableSVGElementList.codeName),
-                    clonedObject_reuseableSVGElementList
-                  ]
-                };
-                const newKey = `${currentSelectedSVG}_variation`;
-
-                const updatedCachedObjectsLog = {
-                  ...cachedObjectsLog,
-                  [newKey]: { ...OriginalObject_cachedObjectsLog, objname: newKey, svgcode: updatedcontent, templatecode: content } // Add or replace the 'newvariation' entry
-                };                
-                
-                // Update cachedobjectslog and reuseableSVGElementList again if necessary
-                updatedVersion = {
-                  ...updatedVersion, // Start with the previously updated version
-                  cachedobjectslog: updatedCachedObjectsLog,
-                  highlightedSVGPieceList: []
-                };
-
-                // Store the updated cached objects back into sessionStorage
-                sessionStorage.setItem('cachedobjects', JSON.stringify(updatedCachedObjectsLog));
-
-                setVersions(prevVersions => {
-                  const updatedVersions = prevVersions.map(version => {
-                    // Ensure `id` is always defined with a default value
-                    const versionId = version.id ?? 'default-id'; // Provide a default value if `id` is undefined
-                    
-                    // If the versionId matches the currentVersionId, update the version
-                    if (versionId === currentVersionId) {
-                      return { ...updatedVersion, id: versionId }; // Use the updated version and ensure the id is set
-                    }
-                
-                    // Otherwise, return the version unchanged but ensure the id is defined
-                    return { ...version, id: versionId };
-                  });
-                
-                  // Return the updated versions array
-                  return updatedVersions;
-                });
-              }
-            //no params
-            else{
-              var updatedcontent = content.slice();
-              // Update the cloned object with the new SVG code
-                clonedObject_reuseableSVGElementList.codeText = updatedcontent;
-
-                // Replace or add the cloned object back to the reuseableSVGElementList
-                var updatedVersion = {
-                  ...currentVersion,
-                  reuseableSVGElementList: [
-                    ...currentVersion.reuseableSVGElementList.filter(item => item.codeName !== clonedObject_reuseableSVGElementList.codeName),
-                    clonedObject_reuseableSVGElementList
-                  ]
-                };
-                const newKey = `${currentSelectedSVG}_variation`;
-
-                const updatedCachedObjectsLog = {
-                  ...cachedObjectsLog,
-                  [newKey]: { ...OriginalObject_cachedObjectsLog, objname: newKey, svgcode: updatedcontent, templatecode: content } // Add or replace the 'newvariation' entry
-                };                
-                
-                // Update cachedobjectslog and reuseableSVGElementList again if necessary
-                updatedVersion = {
-                  ...updatedVersion, // Start with the previously updated version
-                  cachedobjectslog: updatedCachedObjectsLog,
-                  highlightedSVGPieceList: []
-                };
-
-                // Store the updated cached objects back into sessionStorage
-                sessionStorage.setItem('cachedobjects', JSON.stringify(updatedCachedObjectsLog));
-
-                setVersions(prevVersions => {
-                  const updatedVersions = prevVersions.map(version => {
-                    // Ensure `id` is always defined with a default value
-                    const versionId = version.id ?? 'default-id'; // Provide a default value if `id` is undefined
-                    
-                    // If the versionId matches the currentVersionId, update the version
-                    if (versionId === currentVersionId) {
-                      return { ...updatedVersion, id: versionId }; // Use the updated version and ensure the id is set
-                    }
-                
-                    // Otherwise, return the version unchanged but ensure the id is defined
-                    return { ...version, id: versionId };
-                  });
-                
-                  // Return the updated versions array
-                  return updatedVersions;
-                });
-               
-
-            }
-          }
-        } catch (error) {
-          console.error('Error drawing the shape:', error);
-        } 
+        } catch (err) {
+          console.log('err', err)
+        }
     }
 
   const handlePromptChange = (pieceCodeName, prompt) => {
@@ -1643,7 +1600,13 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                       handleUseobjOptionClick(item.codeName, '');
                     }
                   }}
-                  style={{ flexGrow: 1 }}
+                  style={{
+                    width: '120px', // Fixed width
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    marginRight: '10px', // Add some margin to separate from the next element
+                  }}
                 >
                   {item.codeName}
                 </span>

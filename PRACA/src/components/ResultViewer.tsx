@@ -480,37 +480,8 @@ if (event.data.type === 'GET_AnnotatedPieceList') {
                   <div id="canvasContainer"></div>
                   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
                   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-                  <script>
-                  document.addEventListener('click', function(event) {
-                      const rect = document.body.getBoundingClientRect();
-                      const x = ((event.clientX - rect.left) / rect.width) * 100;
-                      const y = ((event.clientY - rect.top) / rect.height) * 100;
-                      window.parent.postMessage({ type: 'CLICK_COORDINATES', x: x, y: y }, '*');
-                  });
-                  
-                  </script>
-                  <script>
-                  window.newobjID = 1;
-
-                    window.currentreuseableSVGElementList = ${JSON.stringify(currentreuseableSVGElementList)};
-                    // Define create_canvas and make it globally accessible
-                    function create_canvas(canvas_color) {
-                        const canvasContainer = document.getElementById('canvasContainer');
-                        // Clear all contents of canvasContainer
-                        while (canvasContainer.firstChild) {
-                            canvasContainer.removeChild(canvasContainer.firstChild);
-                        }
-                        canvasContainer.style.backgroundColor = canvas_color;
-                        return canvasContainer;
-                    }
-                    function setBackground(color) {
-                      window.canvas = new whole_canvas(color)
-                    }
-                    function renderObj(object, coord = { x: 50, y: 50 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
-                      object.placeObj(window.canvas, coord, scale, tl, tr, bl, br)
-                    }
-                    </script>
-                    <script src="/cspy.js"></script>
+                  <script src="/uifunction.js"></script>
+                  <script src="/main.js"></script>
               </body>
               </html>
             `);

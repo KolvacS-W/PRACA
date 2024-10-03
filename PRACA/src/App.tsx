@@ -12,6 +12,7 @@ import ReusableElementToolbar from './components/ReusableElementToolbar';
 
 const App: React.FC = () => {
   const ngrok_url_sonnet = 'https://3ec7-34-69-17-15.ngrok-free.app'+ '/api/message'
+  const api_key = ''
   const [versions, setVersions] = useState<Version[]>([]);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
@@ -536,6 +537,7 @@ const App: React.FC = () => {
             <div className="class-editor-container">
               <ClassEditor 
               ngrok_url_sonnet = {ngrok_url_sonnet}
+              api_key = {api_key}
               currentVersionId={currentVersionId}
               versions={versions}
               setVersions={setVersions}
@@ -547,6 +549,7 @@ const App: React.FC = () => {
             <div className="code-editor-container">
             <CustomCodeEditor
               ngrok_url_sonnet = {ngrok_url_sonnet}
+              api_key = {api_key}
               usercode={versions.find(version => version.id === currentVersionId)!.usercode}
               backendcode={versions.find(version => version.id === currentVersionId)!.backendcode}
               onApplyjs={handlejsCodeInitialize}

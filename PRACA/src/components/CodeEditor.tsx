@@ -6,6 +6,7 @@ import axios from 'axios';
 import ResultViewer from './ResultViewer'; // Import the ResultViewer component
 
 interface CodeEditorProps {
+  api_key: string;
   backendcode: { html: string }; // backend hidden
   usercode: { js: string }; // user use
   onApplyjs: (usercode: { js: string }, backendCode: { html: string }) => void;
@@ -30,6 +31,7 @@ interface CodeEditorProps {
 // const ngrok_url_haiku = ngrok_url + '/api/message-haiku';
 
 const CustomCodeEditor: React.FC<CodeEditorProps> = ({
+  api_key,
   ngrok_url_sonnet,
   usercode,
   backendcode,
@@ -47,7 +49,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   setActiveTab, // Received from parent
   onRunUserCode
 }) => {
-  const componentRef = useRef<HTMLDivElement>(null);
+  const codecomponentRef = useRef<HTMLDivElement>(null);
   const [backendhtml, setbackendHtml] = useState(backendcode.html);
   const [userjs, setuserJs] = useState(usercode.js);
   // const [codeactiveTab, setActiveTab] = useState(activeTab);
@@ -127,9 +129,9 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (componentRef.current) {
+      if (codecomponentRef.current && codecomponentRef.current.contains(event.target as Node)) {
         var clickedOutside = true;
-      console.log('handleclick outside', showModifyObjWidget)
+      console.log('code click outside', showModifyObjWidget)
           // Check if the click is inside the generate option widget
       const generateOptionWidget = document.getElementById('code-generate-option-widget');
       if (generateOptionWidget && generateOptionWidget.contains(event.target as Node)) {
@@ -2359,7 +2361,7 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
 
   return (
     <div
-      ref={componentRef}
+      ref={codecomponentRef}
       className="code-editor"
       onKeyDown={handleKeyDown}
       // onDoubleClick={handleDoubleClick}

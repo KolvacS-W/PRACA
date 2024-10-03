@@ -6,6 +6,7 @@ import axios from 'axios';
 import ResultViewer from './ResultViewer'; // Import the ResultViewer component
 
 interface ClassEditorProps {
+  api_key: string;
   ngrok_url_sonnet: string;
   currentVersionId: string | null;
   setVersions: React.Dispatch<React.SetStateAction<Version[]>>;
@@ -22,6 +23,7 @@ interface ClassEditorProps {
 // const ngrok_url_haiku = ngrok_url + '/api/message-haiku';
 
 const ClassEditor: React.FC<ClassEditorProps> = ({
+  api_key,
   ngrok_url_sonnet,
   currentVersionId,
   versions,
@@ -30,7 +32,7 @@ const ClassEditor: React.FC<ClassEditorProps> = ({
 }) => {
 const editorRef = useRef<HTMLTextAreaElement>(null);
   // const [codeactiveTab, setActiveTab] = useState(activeTab);
-  const componentRef = useRef<HTMLDivElement>(null);
+  const classcomponentRef = useRef<HTMLDivElement>(null);
 
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [showGenerateOption, setShowGenerateOption] = useState(false);
@@ -50,41 +52,41 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
   const handleUpGenerateprompt_word = `Given a word, give me 5 words that are a more abstract and general level of the given word. 
         The more abstract level of a word can be achieved by finding hypernyms of that word.
         For example, “motor vehicle” is one level more abstract than “car”, “self-propelled vehicle” is one level more abstract than “motor vehicle”, “wheeled vehicle” is one level more abstract than “self-propelled vehicle”; “color” is one level more abstract than “blue”.
-        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
+        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
 ;
   const handleUpGenerateprompt_sentence = `Given a text, give me 5 text pieces that are a more abstract and general level of the given text piece.
         The more abstract level of a text can be achieved by removing details, descriptions, and modifiers of the text and making it more generalizable.
         For example, "two parrots with feathers" is 1 level more abstract than "two beautiful parrots with colorful feathers", "two parrots" is 1 level more abstract than "two parrots with feathers"
-        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 ;
   const handleDownGenerateprompt_word = `Given a word, give me 5 words that are 1 level more specific than the given word. 
         The more specific level of a word can be achieved by finding hyponyms of that word.
         For example, “car” is one level more specific than “motor vehicle”, “motor vehicle” is one level more specific than self-propelled vehicle”, “self-propelled vehicle” is one level more specific than “wheeled vehicle”; "blue" is one level more specific than "color".
-        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
+        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
   
   const handleDownGenerateprompt_sentence = `Given a text, give me 5 text pieces that are 1 level more specific than the given text piece.
         The more specific level of a text can be achieved by adding details, descriptions, categories, and modifiers of the text and making it more specific.
         For example, "two beautiful parrots with colorful feathers" is 1 level more specific than "two parrots with feathers", "two parrots with features" is 1 level more specific than "two parrots"
-        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
   
   const handleRightGenerateprompt_word = `Given a word, give me 5 words that each are a variation of the given word.
         The variation text should have same amount of details and same format as the original word.
         For example,
         "blue", "purple", or "red" are variations of "yellow".
         "cow" and "person" are not variations of each other because they are of different categories.
-        Include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 
   const handleRightGenerateprompt_sentence = `Given a text, give me 5 text pieces that each are a variation of the given text piece.
         The variation text should have same amount of details and same format as the original text, with various different details, descriptions, categories, and modifiers of the text to make it somewhat different.
         For example "A white passenger plane with two wings and a tail." is an variation of "A small, red biplane with a propeller in the front."
         "blue", "purple", or "red" are variations of "yellow".
         "cow" and "a horse with brown color running" are not variations of each other because they have different amount of details.
-        Make sure the generated text pieces have same amount of details and same format as the original text. Include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure the generated text pieces have same amount of details and same format as the original text. Include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (true) {
-        console.log('call click outside')
+      if (classcomponentRef.current && classcomponentRef.current.contains(event.target as Node)) {
+        console.log('class click outside')
         var clickedOutside = true;
         // Check if the click is inside the generate option widget
         const generateOptionWidget = document.getElementById('class-generate-option-widget');
@@ -151,17 +153,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
         setShowAutocomplete(true);
       }
     }
-    // if (event.key === '@') {
-    //   const cursorPosition = editorRef.current?.selectionStart || 0;
-    //   const textBeforeCursor = userjs.slice(0, cursorPosition);
-    //   const hintText = textBeforeCursor.split('coord').pop();
-    //   if (hintText) {
-    //     setHintKeywords(hintText);
-    //     const position = getCaretCoordinates(editorRef.current, cursorPosition - hintText.length - 1);
-    //     setCoordcompletePosition({ top: position.top, left: position.left });
-    //     setShowCoordcomplete(true);
-    //   }
-    // }
+
   };
 
   const handleDoubleClick = (event: React.MouseEvent) => {
@@ -235,6 +227,62 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
     }
   };
 
+  const generatewithAPI = async (prompt: string, callback: (response: string) => void) => {
+  
+    try {
+      if (!api_key) {
+        throw new Error("AnthropicGen API key not set");
+      }
+  
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": api_key,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+          "anthropic-dangerous-direct-browser-access": "true", 
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307",
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      const genresp = data.content[0].text;
+      callback(genresp);
+    } catch (err) {
+      console.error('Error in generatewithAPI:', err);
+    }
+  };
+
+  const handleResponse = (content: string, levelIndex: number) => {
+    console.log('content', content)
+    const options = content.split('\n').filter(Boolean);
+    const position = { top: autocompletePosition.top, left: autocompletePosition.left };
+    //setOptionLevels([{ options, position }]); // Initialize with the first level
+    setOptionLevels((prevLevels) => {
+      const updatedLevels = [...prevLevels];
+      updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
+      return updatedLevels;
+    });
+    console.log('option levels:', optionLevels)
+    setGeneratedOptions(options); //just to pass variables to proceedfunction
+    setShowAutocomplete(true)
+  };
+
   const handleUpGenerate = async (hint: string, levelIndex = 0) => {
     setButtonchoice('up') // for ...
     let prompt = '';
@@ -245,31 +293,9 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
     }
 
     try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
   };
 
@@ -283,33 +309,13 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
       prompt = handleRightGenerateprompt_word + hint
     }
     console.log('generate prompt', prompt)
-    try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
 
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+    try {
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
+
   };
 
   const handleDownGenerate = async (hint: string, levelIndex = 0) => {
@@ -322,32 +328,12 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
       prompt = handleDownGenerateprompt_word + hint
     }
 
-    try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
+    console.log('prompt', prompt)
 
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+    try {
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
   };
 
@@ -397,36 +383,24 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
         prompt = handleRightGenerateprompt_word+option    
       }
     }
-    
     try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
+      await generatewithAPI(prompt, (content) => 
+      {const newOptions = content.split('\n').filter(Boolean);
+      const newPosition = {
+        top: optionLevels.length > 0 ? optionLevels[levelIndex].position.top : 0,
+        left: optionLevels.length > 0 ? optionLevels[levelIndex].position.left + 200 : 0,
+      };
+      
+      setOptionLevels((prevLevels) => {
+        const updatedLevels = [...prevLevels];
+        updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: newOptions, position: newPosition });
+        return updatedLevels;
       });
-
-      const data = await response.data;
-      const content = data?.content;
-      console.log('proceedgeneration, option', option, prompt, content)
-      if (content) {
-        const newOptions = content.split('\n').filter(Boolean);
-        const newPosition = {
-          top: optionLevels.length > 0 ? optionLevels[levelIndex].position.top : 0,
-          left: optionLevels.length > 0 ? optionLevels[levelIndex].position.left + 200 : 0,
-        };
-        
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: newOptions, position: newPosition });
-          return updatedLevels;
-        });
-        console.log('proceed: optionlevels', optionLevels)
-      }
-    } catch (error) {
-      console.error('Error processing request:', error);
-    }
+      console.log('proceed: optionlevels', optionLevels)
+    });
+    } catch (err) {
+      console.log('err', err)
+    }    
   };
   
   const ClassGenerateOptionWidget = ({ hintKeywords }: { hintKeywords: string }) => (
@@ -465,14 +439,14 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
       });
     };
   
-    const handleEqualButtonClick = () => {
+    const handleEqualButtonClick = (hintText: string) => {
       const combinedText = checkedOptions.join('\', \'');
       const currentValue = classcode.js;
       const cursorPosition = editorRef.current?.selectionStart || 0;
       const textBeforeCursor = currentValue.slice(0, cursorPosition);
-      const textAfterCursor = currentValue.slice(cursorPosition);
+      const textAfterCursor = currentValue.slice(cursorPosition+hintText.length);
       const newText = textBeforeCursor + combinedText + textAfterCursor;
-      setClassCode(newText);
+      setClassCode({js: newText});
       setShowAutocomplete(false);
       setShowGenerateOption(false);
       setOptionLevels([]);
@@ -549,7 +523,7 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
           ))}
         </ul>
         <button
-          onClick={handleEqualButtonClick}
+          onClick={()=>handleEqualButtonClick(hintKeywords)}
           style={{
             marginTop: '10px',
             width: '100%',
@@ -566,15 +540,10 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
       </div>
     );
   };
-
-
-
   
-  
-
   return (
     <div
-      ref={componentRef}
+      ref={classcomponentRef}
       className="class-editor"
       onKeyDown={handleKeyDown}
       onDoubleClick={handleDoubleClick}

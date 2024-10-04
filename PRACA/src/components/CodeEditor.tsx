@@ -888,26 +888,32 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       }, [svgCodeText]);
 
       const handlePieceClick = (pieceCodeName: string) => {
+        // Keep the current prompts intact while selecting the new piece
+        setCurrentPieceName(pieceCodeName);
       
-      //for showing the svg piece with widgets
-    const piece = currentVersion.previousSelectedSVGPieceList?.find(item => item.codeName === pieceCodeName);
-    //console.log('selected piece:', word, piece, currentVersion.previousSelectedSVGPieceList)
-
-    if (piece) {
-      const parentSVG = currentVersion.reuseableSVGElementList.find(svg => svg.codeName === piece.parentSVG);
-      //console.log('parent svg:', parentSVG)
-      if (parentSVG) {
-        const cursorPosition = editorRef.current?.selectionStart || 0;
-        const position = getCaretCoordinates(editorRef.current, cursorPosition);
-        setAutocompletePositionbackup({ top: 600, left: 0 });
-        console.log('check position', position)
-        setSvgCodeText_checkpiece(parentSVG.codeText);
-        // setCurrentSelectedSVG(piece.codeName);
-        setShowCheckSVGPieceWidget(true); // Show the CheckSVGPieceWidget
-        return;
-      }
-    }
+        // Find the piece from the previous selected list
+        const piece = currentVersion.previousSelectedSVGPieceList?.find(item => item.codeName === pieceCodeName);
+        
+        if (piece) {
+          const parentSVG = currentVersion.reuseableSVGElementList.find(svg => svg.codeName === piece.parentSVG);
+          if (parentSVG) {
+            const cursorPosition = editorRef.current?.selectionStart || 0;
+            const position = getCaretCoordinates(editorRef.current, cursorPosition);
+            setAutocompletePositionbackup({ top: 600, left: 0 });
+            setSvgCodeText_checkpiece(parentSVG.codeText);
+            setShowCheckSVGPieceWidget(true); // Show the CheckSVGPieceWidget
+          }
+      
+          // Preserve all other prompts while ensuring the current piece's prompt is updated or preserved
+          // setPiecePrompts((prevPrompts) => ({
+          //   ...prevPrompts, // Keep previous prompts intact
+          //   [pieceCodeName]: prevPrompts[pieceCodeName] || '', // Preserve the current piece's prompt or set it as an empty string
+          // }));
+          // console.log('set prompts', prevPrompts)
+        }
       };
+      
+      
 
 
     const attachHighlightListeners = (svgElement: SVGElement) => {
@@ -1444,11 +1450,12 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         }
     }
 
-  const handlePromptChange = (pieceCodeName, prompt) => {
+  const handlePromptChange = (pieceCodeName: string, prompt: string) => {
     setPiecePrompts(prevPrompts => ({
       ...prevPrompts,
       [pieceCodeName]: prompt,
     }));
+    console.log('set prompts', prompt)
   };
   // Function to render the small SVG in an iframe for each autocomplete option
   const renderSVGPreview = (svgCode: string) => {
@@ -1612,15 +1619,34 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                 </span>
 
                 {/* Render the small SVG preview */}
-                <iframe
-                  srcDoc={renderSVGPreview(item.codeText)}
-                  style={{
-                    width: '40px',
-                    height: '40px',
-                    border: '1px solid #ccc',
-                    marginLeft: '10px',
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRenderSVGClick(item.codeName, item.codeText);
                   }}
-                />
+                  style={{
+                    width: '40px', // Match iframe width
+                    height: '40px', // Match iframe height
+                    backgroundColor: '#f0f0f0',
+                    border: '1px solid #ccc',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    display: 'flex', // Flexbox for centering content
+                    alignItems: 'center', // Vertically center
+                    justifyContent: 'center', // Horizontally center
+                    padding: '0', // Remove padding to fit the iframe exactly
+                  }}                  
+                >
+                  <iframe
+                    srcDoc={renderSVGPreview(item.codeText)}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      border: 'none', // Remove iframe border if not needed
+                      pointerEvents: 'none', // Prevent iframe from blocking clicks
+                    }}
+                  />
+                </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1636,7 +1662,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                     cursor: 'pointer',
                   }}
                 >
-                  ...
+                  SVG
                 </button>
               </li>
             ))}

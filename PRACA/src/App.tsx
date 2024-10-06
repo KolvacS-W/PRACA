@@ -579,13 +579,13 @@ const App: React.FC = () => {
             setVersions={setVersions}
             iframeRef={iframeRef}
             />
-            <ReusableElementToolbar
+            {/* <ReusableElementToolbar
               currentVersionId={currentVersionId}
               versions={versions}
               setVersions={setVersions}
               hoveredElement={hoveredElement}
               setHoveredElement={setHoveredElement}
-            />
+            /> */}
           </>
         )}
       </div>

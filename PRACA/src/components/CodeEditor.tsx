@@ -889,35 +889,155 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         }
       }, [svgCodeText]);
 
-      const handlePieceClick = (pieceCodeName: string) => {
-        // Keep the current prompts intact while selecting the new piece
-        setCurrentPieceName(pieceCodeName);
-      
-        // Find the piece from the previous selected list
-        const piece = currentVersion.previousSelectedSVGPieceList?.find(item => item.codeName === pieceCodeName);
-        
-        if (piece) {
-          const parentSVG = currentVersion.reuseableSVGElementList.find(svg => svg.codeName === piece.parentSVG);
-          if (parentSVG) {
-            const cursorPosition = editorRef.current?.selectionStart || 0;
-            const position = getCaretCoordinates(editorRef.current, cursorPosition);
-            setAutocompletePositionbackup({ top: 600, left: 0 });
-            setSvgCodeText_checkpiece(parentSVG.codeText);
-            setShowCheckSVGPieceWidget(true); // Show the CheckSVGPieceWidget
+    // small preview
+    const renderSVGInIframe = (previewiframeRef: React.RefObject<HTMLIFrameElement>, svgCode: string) => {
+      const sanitize_removeattributes = (svgString: string) => {
+        // Parse the SVG string into a DOM object
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+        const svgElement = svgDoc.querySelector('svg');
+    
+        if (svgElement) {
+          // Check if the SVG element has width and height attributes but no viewBox
+          const hasViewBox = svgElement.hasAttribute('viewBox');
+          const widthAttr = svgElement.getAttribute('width');
+          const heightAttr = svgElement.getAttribute('height');
+    
+          if (!hasViewBox && widthAttr && heightAttr) {
+            // Set viewBox using the width and height attributes
+            const width = parseFloat(widthAttr);
+            const height = parseFloat(heightAttr);
+            svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
           }
-      
-          // Preserve all other prompts while ensuring the current piece's prompt is updated or preserved
-          // setPiecePrompts((prevPrompts) => ({
-          //   ...prevPrompts, // Keep previous prompts intact
-          //   [pieceCodeName]: prevPrompts[pieceCodeName] || '', // Preserve the current piece's prompt or set it as an empty string
-          // }));
-          // console.log('set prompts', prevPrompts)
+    
+          // Remove the width and height attributes from the SVG element
+          svgElement.removeAttribute('width');
+          svgElement.removeAttribute('height');
+    
+          // Return the sanitized SVG string
+          return new XMLSerializer().serializeToString(svgElement);
         }
+    
+        return svgString.trim(); // In case it's not valid SVG, return the original string
       };
       
+      const iframe = previewiframeRef.current;
+      if (iframe) {
+        const iframeDocument = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDocument) {
+          iframeDocument.open(); // Open the document for writing
+          iframeDocument.write(`
+                      <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+                background-color: none;
+              }
+              svg {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+              }
+              #container {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background-color: none;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container">
+              ${sanitize_removeattributes(svgCode)}
+            </div>
+          </body>
+          </html>
+          `);
+          console.log('ifram code', `
+                      <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+                background-color: white;
+              }
+              svg {
+                width: auto;
+                height: 100%;
+                max-width: 100%;
+                object-fit: contain;
+              }
+              #container {
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                background-color: white;
+              }
+            </style>
+          </head>
+          <body>
+            <div id="container">
+              ${sanitize_removeattributes(svgCode)}
+            </div>
+          </body>
+          </html>
+          `)
+          iframeDocument.close(); // Close the document to complete writing
+        }
+      }
+    };
+
+    const handlePieceClick = (pieceCodeName: string) => {
+      // Keep the current prompts intact while selecting the new piece
+      setCurrentPieceName(pieceCodeName);
+    
+      // Find the piece from the previous selected list
+      const piece = currentVersion.previousSelectedSVGPieceList?.find(item => item.codeName === pieceCodeName);
       
-
-
+      if (piece) {
+        const parentSVG = currentVersion.reuseableSVGElementList.find(svg => svg.codeName === piece.parentSVG);
+        if (parentSVG) {
+          const cursorPosition = editorRef.current?.selectionStart || 0;
+          const position = getCaretCoordinates(editorRef.current, cursorPosition);
+          setAutocompletePositionbackup({ top: 600, left: 0 });
+          setSvgCodeText_checkpiece(parentSVG.codeText);
+          setShowCheckSVGPieceWidget(true); // Show the CheckSVGPieceWidget
+        }
+    
+        // Preserve all other prompts while ensuring the current piece's prompt is updated or preserved
+        // setPiecePrompts((prevPrompts) => ({
+        //   ...prevPrompts, // Keep previous prompts intact
+        //   [pieceCodeName]: prevPrompts[pieceCodeName] || '', // Preserve the current piece's prompt or set it as an empty string
+        // }));
+        // console.log('set prompts', prevPrompts)
+      }
+    };
+      
     const attachHighlightListeners = (svgElement: SVGElement) => {
         svgElement.querySelectorAll('*').forEach(svgChildElement => {
             svgChildElement.addEventListener('click', toggleHighlight);
@@ -1107,45 +1227,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       setShowSvgCodeText(codeText);
       setCurrentSelectedSVG(codeName)
   };
-    const handleApplyClick = () => {
-        console.log("Apply button clicked for:", currentSelectedSVG);
-        //deal with highlight
-        //empty_svgpiece();]
-        setSvgCodeText(savedSvgCodeText)
-        removeAllHighlights();
-        setSvgCodeText('');
 
-        //deal with auto completion
-        const word = 'modifyobj'
-        const currentVersion = versions.find(version => version.id === currentVersionId);
-        if (!currentVersion) {
-          console.log('No current version found');
-          return;
-        }
-    
-        const currenthighlightedSVGPieceList = currentVersion.highlightedSVGPieceList;
-        console.log('svgpieces', currentVersion, currenthighlightedSVGPieceList);
-    
-        if (currenthighlightedSVGPieceList) {
-          const codeNames = currenthighlightedSVGPieceList.map(item => item.codeName).join('\', \'');
-          const cursorPosition = editorRef.current?.selectionStart || 0;
-          const textBeforeCursor = userjs.slice(0, cursorPosition+word.length);
-          const textAfterCursor = userjs.slice(cursorPosition+word.length);
-          var newText
-          if(currenthighlightedSVGPieceList.map(item => item.codeName).length>0){
-            newText = textBeforeCursor + '= {objname: \'' + currentSelectedSVG + '\', piecenames: [\''+ codeNames + '\' ], pieceprompts: []}'+ textAfterCursor;
-          }
-          else{
-            newText = textBeforeCursor + '= {objname: \'' + currentSelectedSVG + '\', piecenames: [], pieceprompts: []}'+ textAfterCursor;
-          }
-          setuserJs(newText);
-          setShowModifyObjWidget(false)
-          setSvgCodeText('')
-          setShowModifyObjButton(false)
-        } else {
-          console.log('highlightedSVGPieceList is undefined or empty');
-        }
-    };
 
     const handleRenameObject = () => {
       if (!objNameInput) return;
@@ -1463,27 +1545,42 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     }));
     console.log('set prompts', prompt)
   };
+
   // Function to render the small SVG in an iframe for each autocomplete option
   const renderSVGPreview = (svgCode: string) => {
     const svgDocument = `
       <!DOCTYPE html>
       <html lang="en">
       <head>
-        <style>
-          html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-          }
-          svg {
-            width: 100%;
-            height: 100%;
-          }
-        </style>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>SVG Render</title>
+          <style>
+              html, body {
+                margin: 0;
+                padding: 0;
+                width: 100%;
+                height: 100%;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                overflow: hidden;
+              }
+              #canvasContainer {
+                position: relative;
+                width: 100%;
+                height: 100%;
+              }
+              svg {
+                width: 100%;
+                height: 100%;
+              }
+          </style>
       </head>
       <body>
-        ${svgCode}
+        <div id="canvasContainer">
+            ${sanitizeSVG(svgCode)}
+        </div>
       </body>
       </html>
     `;
@@ -1645,7 +1742,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                     padding: '0', // Remove padding to fit the iframe exactly
                   }}                  
                 >
-                  <iframe
+                  {/* <iframe
                     srcDoc={renderSVGPreview(item.codeText)}
                     style={{
                       width: '40px',
@@ -1653,7 +1750,19 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                       border: 'none', // Remove iframe border if not needed
                       pointerEvents: 'none', // Prevent iframe from blocking clicks
                     }}
-                  />
+                  /> */}
+                {/* Render the small SVG preview */}
+                <div style={{ width: '40px', height: '40px', border: 'none', pointerEvents: 'none' }}>
+                <iframe
+                  ref={(previewiframeRef) => {
+                    if (previewiframeRef) {
+                      // Render the specific item's codeText in its corresponding iframe
+                      renderSVGInIframe({ current: previewiframeRef }, item.codeText);
+                    }
+                  }}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
+              </div>
                 </button>
                 <button
                   onClick={(e) => {

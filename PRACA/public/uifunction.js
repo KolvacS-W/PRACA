@@ -95,7 +95,7 @@ function placeSvg(svgstring, canvas, coord = {
     // Serialize the updated SVG without <script> and add to the canvas
     const serializer = new XMLSerializer();
     const svgElementStr = serializer.serializeToString(svgDoc.documentElement);
-    console.log('debugnow', content, svgElementStr)
+    // console.log('debugnow', content, svgElementStr)
     // Create an element from the parsed SVG
     const svgElement = createSVGElement(
         svgElementStr,

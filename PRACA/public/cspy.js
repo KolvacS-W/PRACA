@@ -1,7 +1,8 @@
+//import { PromptLibrary } from "./PromptLibrary.js";
+
 // basic CSPY class that we will extend
 class CSPY {
     constructor() {
-        
     }
 
     // return a string reprsentation of the object, iterate over all properties
@@ -16,13 +17,13 @@ class CSPY {
 class Input {
     /**
      * 
-     * @param {string} name 
+     * @param {string} description 
      * @param {any} defaultValue 
     * @param {string} explanation 
      * @param {string} type 
      */
-    constructor(name, defaultValue=undefined, explanation="", type="string") {
-        this.name = name;
+    constructor(description, defaultValue=undefined, explanation="", type="string") {
+        this.description = description;
         this.explanation = explanation;
         this.defaultValue = defaultValue;
         this.type = type;
@@ -33,19 +34,19 @@ class Input {
      * @returns {string}
      */
     toString() {
-        return `${this.name}: ${this.explanation} (${this.type})`;
+        return `${this.description}: ${this.explanation} (${this.type})`;
     }
 }
 
 class RandomChoiceInput extends Input {
     /**
      * 
-     * @param {string} name 
+     * @param {string} description 
      * @param {array} choices
      * @param {string} type
      */
-    constructor(name, choices=[], type="string") {
-        this.name = name;
+    constructor(description, choices=[], type="string") {
+        this.description = description;
         this.choices = choices;
         this.type = type;
     }
@@ -55,7 +56,7 @@ class RandomChoiceInput extends Input {
      * @returns {string}
      */
     toString() {
-        return `${this.name}: ${this.choices} (${this.type})`;
+        return `${this.description}: ${this.choices} (${this.type})`;
     }
 
     /**
@@ -71,7 +72,7 @@ class RandomChoiceInput extends Input {
 
 // demo script for command line usage
 //const input = new Input("name", "the name of the house", "John Doe", "string");
-//console.log(input.toString());
+//CSPYCompiler.log(input.toString());
 
 
 
@@ -100,6 +101,7 @@ class AnthropicGen {
     // make as singleton pattern
     static instance = undefined;
     static apiKey = undefined;
+    static model = "claude-3-5-sonnet-20240620";
 
     /**
      * 
@@ -112,9 +114,12 @@ class AnthropicGen {
             this.loadKey();
         } else {
             AnthropicGen.apiKey = key;
-            console.log('key provided', AnthropicGen, AnthropicGen.apiKey)
         }
         return(AnthropicGen.instance);
+    }
+
+    static setModel(model) {
+        AnthropicGen.model = model;
     }
 
     async loadKey() {
@@ -133,7 +138,7 @@ class AnthropicGen {
                 .then(response => response.text())
                 .then(key => {
                     AnthropicGen.apiKey = key.trim();
-                    console.log(AnthropicGen.apiKey);
+                    CSPYCompiler.log(AnthropicGen.apiKey);
                     return;
                 })
                 .catch(err => {
@@ -143,7 +148,7 @@ class AnthropicGen {
         } catch (err) {
 
         }
-        console.log(AnthropicGen.apiKey);
+        CSPYCompiler.log(AnthropicGen.apiKey);
     }
 
     /**
@@ -174,6 +179,8 @@ class AnthropicGen {
         if (!AnthropicGen.apiKey) {
             throw new Error("AnthropicGen API key not set");
         }
+        CSPYCompiler.log("using model: " + AnthropicGen.model);
+
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
         headers: {
@@ -183,7 +190,7 @@ class AnthropicGen {
           "anthropic-dangerous-direct-browser-access": "true",
         },
         body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
+          model: AnthropicGen.model,
           max_tokens: 1024,
           messages: [
             {
@@ -211,8 +218,11 @@ class SVGGen {
      * 
      * @returns {string}
      */
-    getSVG() {
-        console.log(typeof this.svgString);
+    async getSVG(callback = undefined) {
+        //CSPYCompiler.log(typeof this.svgString);
+        if (callback) {
+            await callback(this.svgString);
+        }
         return this.svgString;
     }
 
@@ -229,7 +239,7 @@ class SVGGen {
     }
 
     setSVG(svgString) {
-        //console.log("****" + svgString)
+        //CSPYCompiler.log("****" + svgString)
         this.svgString = svgString;
     }
 
@@ -242,6 +252,20 @@ class SVGGen {
  * Compiler class, will generate the right class based on compiler options
  */
 class CSPYCompiler {
+
+
+    static logEnable = true;
+
+    static setLogEnable(enable) {
+        CSPYCompiler.logEnable = enable;
+    }
+
+    static log(msg) {
+        if (CSPYCompiler.logEnable) {
+            console.log(msg);
+        }
+    }
+
     /**
      * 
      * @param {...string} propNames 
@@ -257,13 +281,13 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG(callback = () => {}) {
+            async getSVG(callback = undefined) {
                 if (this.svgString) {
-                    console.log("Returning cached SVG");
-                    return super.getSVG();
+                    CSPYCompiler.log("Returning cached SVG");
+                    return super.getSVG(callback);
                 }
                 this.svgString = "";
-                console.log("Generating SVG...");
+                CSPYCompiler.log("Generating SVG...");
 
                 const props = Object.getOwnPropertyNames(this);
                 var propPromptString = "";
@@ -297,13 +321,11 @@ class CSPYCompiler {
                     "there should be no other text before or after the SVG code.";
                 
 
-                console.log(prompt);
+                CSPYCompiler.log(prompt);
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                     this.setSVG(resp);
                 });
-                console.log('before callback', this.svgString)
-                await callback(this.svgString);              
-                return(this.svgString);
+                return super.getSVG(callback);
             }
 
             update(...propValues) {
@@ -334,18 +356,19 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG(callback = () => {}) {
+            async getSVG(callback = undefined) {
                 if (this.svgString) {
-                    console.log("Returning cached SVG");
-                    return super.getSVG();
+                    CSPYCompiler.log("Returning cached SVG");
+                    return super.getSVG(callback);
                 }
                 if (this.svgTemplate) {
-                    return await this.fillTemplate(callback);
+                    this.fillTemplate();
+                    return super.getSVG(callback);
                 }
 
                 this.svgString = "";
                   
-                console.log("Generating SVG...");
+                CSPYCompiler.log("Generating SVG...");
 
                 const props = Object.getOwnPropertyNames(this);
 
@@ -358,7 +381,16 @@ class CSPYCompiler {
                     "there should be no other text before or after the SVG code." +
                     "The properties I am interested in templatizing are: \n";
                     
-    
+                prompt = "write me svg code to create a svg image of " + this.prompt + 
+                ". Make the svg image as detailed as possible and as close to the description as possible.\n" + 
+                "Furthermore, process the generated svg code into a svg code template, with the given a list " +
+                "of parameter names, make the returned svg code a template with certain parameters as text placeholders made by ${parameter name}. " +
+                "For example, parameter list: roof height, window color; resulting javascript template:\n" +
+                "<svg viewBox=\"0 0 200 200\">\n<rect x=\"50\" y=\"70\" width=\"100\" height=\"80\" fill=\"brown\" /> <!-- House body -->\n<polygon points=\"50,70 100,{roof_height} 150,70\" fill=\"red\" /> <!-- Roof -->\n<rect x=\"65\" y=\"90\" width=\"20\" height=\"20\" fill=\"{window_color}\" /> <!-- Window 1 -->\nrect x=\"115\" y=\"90\" width=\"20\" height=\"20\" fill=\"{window_color}\" /> <!-- Window 2 -->\n<rect x=\"90\" y=\"120\" width=\"20\" height=\"30\" fill=\"black\" /> <!-- Door -->\n</svg>." +
+                "Notice that only one parameter name and nothing else can be inside ${}. Replace the whole parameter "+
+                "(e.g., fill = \"#e0d0c0\" to fill = \"${parameter name}\") instead of just part of it (e.g., "+
+                "fill = \"#e0d0c0\" to fill = \"#${parameter name}\"). Return svg code template for this parameter list:\n\n";
+              
                 props.forEach(prop => {
                     if (prop == "prompt") {
                         return;
@@ -369,23 +401,30 @@ class CSPYCompiler {
                     if (prop == "svgTemplate") {
                         return;
                     }
-                    prompt += `${prop}\n`;
+                    prompt += `variable name: ${prop} which encodes the ${this.inputs[prop].description}\n`;
                    });
-                                   
-                console.log(prompt);
+                
+                CSPYCompiler.log(this.inputs);
+
+                prompt = prompt + "\n" +" Do not include any background in generated svg. "+
+                "The svg code template must be able to satisfy the requirements of the parameters by simply replacing the placeholders, instead of other manual modifications (e.g., 'window number' can be modified by simply replacing {window number} to some data, instead of needing to repeat window element manually)" +
+                "Make sure do not include anything other than the final svg code template in your response."
+
+                CSPYCompiler.log(prompt);
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                     this.setTemplate(resp);
                 });
-                return await this.fillTemplate(callback);
+                this.fillTemplate();
+                return super.getSVG(callback);
             }
 
             setTemplate(templateString) {
-                //console.log("****" + svgString)
-                console.log(templateString);
+                //CSPYCompiler.log("****" + svgString)
+                CSPYCompiler.log(templateString);
                 this.svgTemplate = templateString;
             }
 
-            async fillTemplate(callback = () => {}) {
+            fillTemplate() {
                 String.prototype.interpolate = function(params) {
                     const names = Object.keys(params);
                     const vals = Object.values(params);
@@ -401,13 +440,16 @@ class CSPYCompiler {
                     if (prop == "svgString") {
                         return;
                     }
+                    if (prop == "svgTemplate") {
+                        return;
+                    }
                     tvals[prop] = this[prop];
                    });
 
                 const template = this.svgTemplate;
-                this.svgString = template.interpolate(tvals);                
-                await callback(this.svgString);
-                return(this.svgString);
+                CSPYCompiler.log(tvals);
+                this.svgString = template.interpolate(tvals);
+                //return this.svgString;
             }
 
             update(...propValues) {
@@ -437,10 +479,10 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG() {
+            async getSVG(callback = undefined) {
                 if (this.svgString) {
-                    console.log("Returning cached SVG");
-                    return super.getSVG();
+                    CSPYCompiler.log("Returning cached SVG");
+                    return super.getSVG(callback);
                 }
                 if (typeof this.fillTemplate === "function") {
                     return this.fillTemplate();
@@ -475,20 +517,21 @@ class CSPYCompiler {
                     prompt += `${prop}\n`;
                 });
                                 
-                //console.log(prompt);
+                //CSPYCompiler.log(prompt);
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                    this.setTemplate(resp);
                 });
-                //this.setTemplate("function fillTemp(props) { console.log('yay!');}");
+                //this.setTemplate("function fillTemp(props) { CSPYCompiler.log('yay!');}");
                 //return this.fillTemplate();
+                return super.getSVG(callback);
             }
 
             setTemplate(templateString) {
-                //console.log("****" + svgString)
+                //CSPYCompiler.log("****" + svgString)
                 // eval the string and set
-                console.log(templateString);
+                CSPYCompiler.log(templateString);
                 var func = eval("var fillTemp="+templateString+"\nfillTemp;");
-                //console.log(func);
+                //CSPYCompiler.log(func);
                 Object.getPrototypeOf(this).fillTemp = func;
                 this.fillTemp([]);
                 //this.svgTemplate = templateString;
@@ -522,7 +565,7 @@ class CSPYCompiler {
         newclass.inputs = inputs;
         newclass.prototype.inputs = inputs;
 
-        console.log(inputs);
+        CSPYCompiler.log(inputs);
         return newclass;
 
     }
@@ -584,5 +627,3 @@ class CSPYCompiler {
         }
     }
 }
-
-

@@ -70,6 +70,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   const [buttonchoice, setButtonchoice] = useState('');
   //for modifyobjwidget
   const [svgCodeText, setSvgCodeText] = useState('');
+  const [showSvgCodeText, setShowSvgCodeText] = useState('');
   const [showModifyObjWidget, setShowModifyObjWidget] = useState(true);
   const [currentSelectedSVG, setCurrentSelectedSVG] = useState(''); // State to store the current codeName
   const [showmodifyobjbutton, setShowModifyObjButton] = useState(false);
@@ -224,6 +225,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             return updatedVersions;
           });
           setSvgCodeText('');
+          setShowSvgCodeText('');
           setShowCheckSVGPieceWidget(false);
           setShowCheckWholeSVGWidget(false);
           setShowModifyObjButton(false);
@@ -1101,6 +1103,10 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         setCurrentSelectedSVG(codeName)
     };
 
+    const handleShowSVGClick = (codeName: string, codeText: string) => {
+      setShowSvgCodeText(codeText);
+      setCurrentSelectedSVG(codeName)
+  };
     const handleApplyClick = () => {
         console.log("Apply button clicked for:", currentSelectedSVG);
         //deal with highlight
@@ -1618,6 +1624,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                   {item.codeName}
                 </span>
 
+
+
                 {/* Render the small SVG preview */}
                 <button
                   onClick={(e) => {
@@ -1650,7 +1658,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRenderSVGClick(item.codeName, item.codeText);
+                    handleShowSVGClick(item.codeName, item.codeText);
                   }}
                   style={{
                     marginLeft: '10px',
@@ -1668,6 +1676,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             ))}
           </ul>
         </div>
+
+
 
         {/* Large SVG preview iframe at the bottom */}
         {svgCodeText && (
@@ -1688,6 +1698,11 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             </div>
           </div>
         )}
+        {showSvgCodeText && (
+          <div className="hovered-element-text">
+            <pre>{showSvgCodeText}</pre>
+          </div>
+        )}        
       </div>
 
       {/* Right side for SVG preview and inputs */}

@@ -443,10 +443,6 @@ if (event.data.type === 'GET_AnnotatedPieceList') {
         if (newDocument) {
           newDocument.open();
 
-          // Get container dimensions for scaling
-          const containerWidth = containerRef.current?.offsetWidth || 600;
-          const containerHeight = containerRef.current?.offsetHeight || 600;
-
           if (activeTab === 'html') {
             // Render backend HTML when HTML tab is selected
             iframeDocument.write(backendcode.html);

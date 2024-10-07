@@ -5,7 +5,7 @@ setBackground('lightblue')
 const ag = new AnthropicGen(apiKey);
 // await ag.loadKey();
 
-var simple = CSPYCompiler.compile(SimpleHouse,"template");
+var simple = CSPYCompiler.compile(SimpleHouse,"prompt");
 
 console.log('A')
 var inst1 = new simple("red","square");

@@ -34,9 +34,46 @@ class Input {
      * @returns {string}
      */
     toString() {
-        return `${this.description}: ${this.explanation} (${this.type})`;
+        return `${this.description}: ${this.defaultValue} ${this.explanation} (${this.type})`;
+    }
+
+    clone() {
+        let clone = Object.assign(Object.create(Object.getPrototypeOf(this)), this)
+        return(clone);
     }
 }
+
+class StaticInput extends Input {
+    /**
+     * 
+     * @param {string} description 
+     * @param {any} defaultValue 
+     * @param {string} explanation 
+    * @param {string} type 
+    */
+    constructor(description, defaultValue=undefined, explanation="", type="string") {
+        //console.log("STATIC INPUT",description, defaultValue, explanation, type);
+        super(description, defaultValue, explanation, type);
+    }
+}
+
+class ContextInput extends Input {
+
+    constructor(description, contextObject) {
+        if (typeof contextObject == SVGGen) {
+            if (contextObject.svgString) {
+                contextObject = contextObject.svgString;
+            } else {
+                throw new Error("contextObject does not seem to have an svgString (make sure you have called getSVG() on it before passing it to the ContextInput)");
+            }
+        } else {
+            // assume it is a string
+            contextObject = contextObject.toString();
+        }
+        super(description, contextObject, "", "svg_string");
+    }
+}
+
 
 class RandomChoiceInput extends Input {
     /**
@@ -179,7 +216,7 @@ class AnthropicGen {
         if (!AnthropicGen.apiKey) {
             throw new Error("AnthropicGen API key not set");
         }
-        CSPYCompiler.log("using model: " + AnthropicGen.model);
+        //CSPYCompiler.log("using model: " + AnthropicGen.model);
 
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
@@ -277,45 +314,57 @@ class CSPYCompiler {
             constructor(...propValues){
                 super();
                 propNames.forEach((name, idx) => {
-                this[name] = propValues[idx];
+                    if (propValues[idx] == undefined) {
+                        this[name] = this.inputs[name].defaultValue;
+                        return;
+                    } else {
+                        //console.log(name,idx,propValues[idx]);
+                        this[name] = propValues[idx];
+                        this.inputs[name].defaultValue = propValues[idx];
+                    }
                 });
+                console.log('check herehhh', this)
             }
 
             async getSVG(callback = undefined) {
                 if (this.svgString) {
                     CSPYCompiler.log("Returning cached SVG");
-                    return super.getSVG(callback);
+                    return super.getSVG();
                 }
                 this.svgString = "";
                 CSPYCompiler.log("Generating SVG...");
 
-                const props = Object.getOwnPropertyNames(this);
+                const props = Object.keys(this.inputs);
+                //console.log(this.inputs);
                 var propPromptString = "";
+                var contextPromptString = undefined;
+
                 props.forEach(prop => {
-                    if (prop == "prompt") {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
                         return;
                     }
-                    if (prop == "svgString") {
-                        return;
+                    
+                    if (tProp instanceof StaticInput) {
+                        propPromptString += `The ${prop} should be ${tProp.defaultValue}\n`;
+                    } else if (tProp instanceof ContextInput) {
+                        if (!contextPromptString) {
+                            contextPromptString = "";
+                        }
+                        contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
+                    } else {
+                        console.log(prop,typeof tProp);
                     }
-                    propPromptString += `The ${prop} should be ${this[prop]}\n`;
                    });
                    
-                var prompt = "";
-                if (!this.contextString) {
-                    prompt = "Generate an SVG object for " + this.prompt + "\n";
-                    if (propPromptString != "") {
-                        prompt = prompt + "The SVG should have the following properties:\n" + propPromptString;
-                    }
-                    prompt = prompt + "\nLabel the parts of the object so they are easier to update. "
-                } else {
-                    prompt = "This is an SVG for " + this.prompt + "\n";
-                    prompt = prompt + "Modify the SVG so it has the following properties: ";
-                    if (propPromptString != "") {
-                        prompt = prompt + propPromptString;
-                    }
+                var prompt = "Generate an SVG object for " + this.prompt + "\n";
+                if (propPromptString != "") {
+                    prompt = prompt + "The SVG should have the following properties:\n" + propPromptString;
                 }
-
+                prompt = prompt + "\nLabel the parts of the object as an SVG id so they are easier to update.\n";
+                if (contextPromptString) {
+                    prompt = prompt + contextPromptString;
+                }
                 prompt = prompt + 
                     "\nThe response should be entirely in SVG format, "+
                     "there should be no other text before or after the SVG code.";
@@ -330,10 +379,23 @@ class CSPYCompiler {
 
             update(...propValues) {
                 var toRet = this.clone();
-                propNames.forEach((name, idx) => {
-                    toRet[name] = propValues[idx];
+                var iputs = {};
+                var toRetPNames = [];
+                const props = Object.keys(this.inputs);
+                var idx = 0;
+                props.forEach((prop) => {
+                    var tProp = this.inputs[prop];
+                    tProp = tProp.clone();
+                    tProp.defaultValue = propValues[idx];
+                    iputs[prop] = tProp;
+                    toRetPNames.push(prop);
+                    idx++;
                 });
-                toRet.contextString = toRet.svgString;
+                toRet.inputs = iputs;
+                toRet.propNames = toRetPNames;
+                // the clone should now have a contextinput, so
+                
+                toRet.inputs['contextString'] = new ContextInput("starter SVG",this.svgString);
                 toRet.svgString = undefined;
                 return toRet;
             }
@@ -352,7 +414,14 @@ class CSPYCompiler {
             constructor(...propValues){
                 super();
                 propNames.forEach((name, idx) => {
-                this[name] = propValues[idx];
+                    if (propValues[idx] == undefined) {
+                        this[name] = this.inputs[name].defaultValue;
+                        return;
+                    } else {
+                        //console.log(name,idx,propValues[idx]);
+                        this[name] = propValues[idx];
+                        this.inputs[name].defaultValue = propValues[idx];
+                    }
                 });
             }
 
@@ -370,7 +439,7 @@ class CSPYCompiler {
                   
                 CSPYCompiler.log("Generating SVG...");
 
-                const props = Object.getOwnPropertyNames(this);
+                
 
                 var prompt = "Generate an SVG object for '" + this.prompt + 
                     "'. For the following properties, replace the value with a javascript template in the same name.\n" +
@@ -391,24 +460,33 @@ class CSPYCompiler {
                 "(e.g., fill = \"#e0d0c0\" to fill = \"${parameter name}\") instead of just part of it (e.g., "+
                 "fill = \"#e0d0c0\" to fill = \"#${parameter name}\"). Return svg code template for this parameter list:\n\n";
               
+                const props = Object.keys(this.inputs);
+                var contextPromptString = undefined;
                 props.forEach(prop => {
-                    if (prop == "prompt") {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
                         return;
                     }
-                    if (prop == "svgString") {
-                        return;
+                    
+                    if (tProp instanceof StaticInput) {
+                        prompt += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                    } else if (tProp instanceof ContextInput) {
+                        if (!contextPromptString) {
+                            contextPromptString = "";
+                        }
+                        contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
                     }
-                    if (prop == "svgTemplate") {
-                        return;
-                    }
-                    prompt += `variable name: ${prop} which encodes the ${this.inputs[prop].description}\n`;
                    });
                 
                 CSPYCompiler.log(this.inputs);
 
                 prompt = prompt + "\n" +" Do not include any background in generated svg. "+
                 "The svg code template must be able to satisfy the requirements of the parameters by simply replacing the placeholders, instead of other manual modifications (e.g., 'window number' can be modified by simply replacing {window number} to some data, instead of needing to repeat window element manually)" +
-                "Make sure do not include anything other than the final svg code template in your response."
+                "Make sure do not include anything other than the final svg code template in your response.";
+
+                if (contextPromptString) {
+                    prompt = prompt + "\n\n" + contextPromptString;
+                }
 
                 CSPYCompiler.log(prompt);
                 var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
@@ -479,7 +557,7 @@ class CSPYCompiler {
                 });
             }
 
-            async getSVG(callback = undefined) {
+            async getSVG(callback=undefined) {
                 if (this.svgString) {
                     CSPYCompiler.log("Returning cached SVG");
                     return super.getSVG(callback);
@@ -559,13 +637,13 @@ class CSPYCompiler {
         for (var i = 0; i < props.length; i++) {
            var iput = tempInst[props[i]];
            if (iput instanceof Input) {
-            inputs[props[i]] = iput;
+             inputs[props[i]] = iput.clone();
            }
         }
         newclass.inputs = inputs;
         newclass.prototype.inputs = inputs;
 
-        CSPYCompiler.log(inputs);
+        //CSPYCompiler.log(inputs);
         return newclass;
 
     }

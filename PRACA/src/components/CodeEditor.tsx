@@ -6,6 +6,8 @@ import axios from 'axios';
 import ResultViewer from './ResultViewer'; // Import the ResultViewer component
 
 interface CodeEditorProps {
+  classcode: {js: string},
+  setClassCode: React.Dispatch<React.SetStateAction<{ js: string }>>;
   api_key: string;
   backendcode: { html: string }; // backend hidden
   usercode: { js: string }; // user use
@@ -31,22 +33,16 @@ interface CodeEditorProps {
 // const ngrok_url_haiku = ngrok_url + '/api/message-haiku';
 
 const CustomCodeEditor: React.FC<CodeEditorProps> = ({
+  classcode,
+  setClassCode,
   api_key,
   ngrok_url_sonnet,
   usercode,
   backendcode,
-  onApplyjs,
-  onApplyhtml,
-  description,
-  savedOldCode,
-  keywordTree,
-  wordselected,
   currentVersionId,
   setVersions,
   versions,
-  extractKeywords,
   activeTab,
-  setActiveTab, // Received from parent
   onRunUserCode
 }) => {
   const codecomponentRef = useRef<HTMLDivElement>(null);
@@ -70,52 +66,47 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   const [buttonchoice, setButtonchoice] = useState('');
   //for modifyobjwidget
   const [svgCodeText, setSvgCodeText] = useState('');
-  const [showSvgCodeText, setShowSvgCodeText] = useState('');
   const [showModifyObjWidget, setShowModifyObjWidget] = useState(true);
   const [currentSelectedSVG, setCurrentSelectedSVG] = useState(''); // State to store the current codeName
   const [showmodifyobjbutton, setShowModifyObjButton] = useState(false);
+  const [showSvgCodeText, setShowSvgCodeText] = useState('');
   //for checksvgpiecewidget
   const [showCheckSVGPieceWidget, setShowCheckSVGPieceWidget] = useState(false)
   const [svgCodeText_checkpiece, setSvgCodeText_checkpiece] = useState('');
   //for checkwholesvgwidget
-  const [showCheckWholeSVGWidget, setShowCheckWholeSVGWidget] = useState(false)
-  const [svgCodeText_checkwholesvg, setSvgCodeText_checkwholesvg] = useState('');
-  //for cachedobjectswidget
-  const [showCachedObjWidget, setShowCachedObjWidget] = useState(false)
-
   const handleUpGenerateprompt_word = `Given a word, give me 5 words that are a more abstract and general level of the given word. 
         The more abstract level of a word can be achieved by finding hypernyms of that word.
         For example, “motor vehicle” is one level more abstract than “car”, “self-propelled vehicle” is one level more abstract than “motor vehicle”, “wheeled vehicle” is one level more abstract than “self-propelled vehicle”; “color” is one level more abstract than “blue”.
-        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
+        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
 ;
   const handleUpGenerateprompt_sentence = `Given a text, give me 5 text pieces that are a more abstract and general level of the given text piece.
         The more abstract level of a text can be achieved by removing details, descriptions, and modifiers of the text and making it more generalizable.
         For example, "two parrots with feathers" is 1 level more abstract than "two beautiful parrots with colorful feathers", "two parrots" is 1 level more abstract than "two parrots with feathers"
-        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 ;
   const handleDownGenerateprompt_word = `Given a word, give me 5 words that are 1 level more specific than the given word. 
         The more specific level of a word can be achieved by finding hyponyms of that word.
         For example, “car” is one level more specific than “motor vehicle”, “motor vehicle” is one level more specific than self-propelled vehicle”, “self-propelled vehicle” is one level more specific than “wheeled vehicle”; "blue" is one level more specific than "color".
-        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
+        Make sure all 5 words in the response are on the same level; and include nothing but the 5 words separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given word: `;
   
   const handleDownGenerateprompt_sentence = `Given a text, give me 5 text pieces that are 1 level more specific than the given text piece.
         The more specific level of a text can be achieved by adding details, descriptions, categories, and modifiers of the text and making it more specific.
         For example, "two beautiful parrots with colorful feathers" is 1 level more specific than "two parrots with feathers", "two parrots with features" is 1 level more specific than "two parrots"
-        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure all the 5 text pieces in the response are on the same level, and include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
   
   const handleRightGenerateprompt_word = `Given a word, give me 5 words that each are a variation of the given word.
         The variation text should have same amount of details and same format as the original word.
         For example,
         "blue", "purple", or "red" are variations of "yellow".
         "cow" and "person" are not variations of each other because they are of different categories.
-        Include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 
   const handleRightGenerateprompt_sentence = `Given a text, give me 5 text pieces that each are a variation of the given text piece.
         The variation text should have same amount of details and same format as the original text, with various different details, descriptions, categories, and modifiers of the text to make it somewhat different.
         For example "A white passenger plane with two wings and a tail." is an variation of "A small, red biplane with a propeller in the front."
         "blue", "purple", or "red" are variations of "yellow".
         "cow" and "a horse with brown color running" are not variations of each other because they have different amount of details.
-        Make sure the generated text pieces have same amount of details and same format as the original text. Include nothing but the 5 text pieces separated by '\n' in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
+        Make sure the generated text pieces have same amount of details and same format as the original text. Include nothing but the 5 text pieces separated by '\\n' (newline character) in the response. Make sure the generated contents are also in the semantic space of ${hintKeywords}. If there's no more suitable text to be generated, return "no further generation". Given text: `;
 
 
   useEffect(() => {
@@ -176,40 +167,13 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             clickedOutside = false;
           }
         }
-      
-        if (showCheckSVGPieceWidget) {
-          console.log('check showCheckSVGPieceWidget')
-          const CheckSVGPieceWidgetElement = document.querySelector('.check-svg-piece-widget');
-          if (CheckSVGPieceWidgetElement && CheckSVGPieceWidgetElement.contains(event.target as Node)) {
-            clickedOutside = false;
-          }
-        }
-      
-        if (showCheckWholeSVGWidget) {
-          console.log('check showCheckWholeSVGWidget')
-          const showCheckWholeSVGWidgetElement = document.querySelector('.check-svg-piece-widget');
-          if (showCheckWholeSVGWidgetElement && showCheckWholeSVGWidgetElement.contains(event.target as Node)) {
-            clickedOutside = false;
-          }
-        }
-      
-        // Check if the click is outside the cached object widget (and only close if the click is outside)
-        if (showCachedObjWidget) {
-          console.log('check showcachedobjwidget')
-          const showCachedObjWidgetElement = document.querySelector('.cached-obj-widget');
-          if (showCachedObjWidgetElement && showCachedObjWidgetElement.contains(event.target as Node)) {
-            clickedOutside = false;
-          } else {
-            setShowCachedObjWidget(false);
-          }
-        }
-      
+            
         // If the click was outside all widgets, close the others
         if (clickedOutside) {
           console.log('Clicked outside');
-          // setOptionLevels([]);
-          // setShowAutocomplete(false);
-          // setShowGenerateOption(false);
+          setOptionLevels([]);
+          setShowAutocomplete(false);
+          setShowGenerateOption(false);
           // setShowCoordcomplete(false);
           // setShowModifyObjWidget(false);
           setVersions(prevVersions => {
@@ -226,15 +190,12 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           });
           setSvgCodeText('');
           setShowSvgCodeText('');
-          setShowCheckSVGPieceWidget(false);
-          setShowCheckWholeSVGWidget(false);
           setShowModifyObjButton(false);
           // setButtonchoice('');
         }
       }
       
-    };
-    
+    };  
     
 
     document.addEventListener('mousedown', handleClickOutside);
@@ -257,19 +218,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   // };
 
 
-  //make sure backendcode starts from original when new usercode is run
-  const handleRun = (versionId: string) => {
-    console.log('handlerun called')
-    if(activeTab == 'js'){
-      onApplyjs({ js: userjs }, {html: ``});
-    console.log('run js, backendHtml back to initiate', backendhtml)
-    }
-    else{
-      console.log('run html')
-      onApplyhtml({ js: userjs })
-    }
-
-  };
 
   //auto completion
   const handleKeyDown = (event: React.KeyboardEvent) => {
@@ -287,133 +235,47 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         setShowAutocomplete(true);
       }
     }
-    // if (event.key === '@') {
-    //   const cursorPosition = editorRef.current?.selectionStart || 0;
-    //   const textBeforeCursor = userjs.slice(0, cursorPosition);
-    //   const hintText = textBeforeCursor.split('coord').pop();
-    //   if (hintText) {
-    //     setHintKeywords(hintText);
-    //     const position = getCaretCoordinates(editorRef.current, cursorPosition - hintText.length - 1);
-    //     setCoordcompletePosition({ top: position.top, left: position.left });
-    //     setShowCoordcomplete(true);
-    //   }
-    // }
+
   };
 
-  // const handleDoubleClick = (event: React.MouseEvent) => {
-  //   const selection = window.getSelection();
-  //   const word = selection?.toString().trim();
+  const handleDoubleClick = (event: React.MouseEvent) => {
+    const selection = window.getSelection();
+    const word = selection?.toString().trim();
 
-  //   const currentVersion = versions.find(version => version.id === currentVersionId);
-  //   if (!currentVersion) {
-  //     console.log('No current version found');
-  //     return;
-  //   }
+    const currentVersion = versions.find(version => version.id === currentVersionId);
+    if (!currentVersion) {
+      console.log('No current version found');
+      return;
+    }
+  
 
-  //   //for showing the svg piece with widgets
-  //   const piece = currentVersion.previousSelectedSVGPieceList?.find(item => item.codeName === word);
-  //   //console.log('selected piece:', word, piece, currentVersion.previousSelectedSVGPieceList)
+      // if (word === 'cachedobjects') {
+      //   console.log('double-clicked on cachedobjects');
 
-  //   if (piece) {
-  //     const parentSVG = currentVersion.reuseableSVGElementList.find(svg => svg.codeName === piece.parentSVG);
-  //     //console.log('parent svg:', parentSVG)
-  //     if (parentSVG) {
-  //       const cursorPosition = editorRef.current?.selectionStart || 0;
-  //       const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //       setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //       setSvgCodeText_checkpiece(parentSVG.codeText);
-  //       setCurrentSelectedSVG(piece.codeName);
-  //       setShowCheckSVGPieceWidget(true); // Show the CheckSVGPieceWidget
-  //       return;
-  //     }
-  //   }
-  //   //for showing svgname with widgets
-  //   const svg = currentVersion.reuseableSVGElementList?.find(item => item.codeName === word)?.codeText;
-  //   //console.log('selected piece:', word, piece, currentVersion.previousSelectedSVGPieceList)
-
-  //   if (svg) {
-  //       const cursorPosition = editorRef.current?.selectionStart || 0;
-  //       const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //       setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //       setSvgCodeText_checkwholesvg(svg);
-  //       setShowCheckWholeSVGWidget(true); // Show the CheckSVGPieceWidget
-  //       return;
-  //   }
-    
-  //     if (word === 'context') {
-  //       console.log('double-clicked on context');
-  //       setShowModifyObjButton(true)
-  //       const currentVersion = versions.find(version => version.id === currentVersionId);
-  //       if (!currentVersion) {
-  //         console.log('No current version found');
-  //         return;
-  //       }
-    
-  //       const currentreuseableSVGElementList = currentVersion.reuseableSVGElementList;
-  //       console.log('reuseableSVGElementList', currentVersion, currentreuseableSVGElementList);
-    
-  //       if (currentreuseableSVGElementList) {
-  //         const cursorPosition = editorRef.current?.selectionStart || 0;
-  //         const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //         setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //         setShowModifyObjWidget(true); // Show the widget
-  //         //setSelectedCodeText(''); // Reset the selected code text
-  //       } else {
-  //         console.log('reuseableSVGElementList is undefined or empty');
-  //       }
-  //     }
+      //   const cursorPosition = editorRef.current?.selectionStart || 0;
+      //   const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
+      //   setAutocompletePosition({ top: position.top + 50, left: position.left });
+      //   setShowCachedObjWidget(true); // Show the widget
+      // }
 
 
-  //     if (word === 'cachedobjects') {
-  //       console.log('double-clicked on cachedobjects');
-
-  //       const cursorPosition = editorRef.current?.selectionStart || 0;
-  //       const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //       setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //       setShowCachedObjWidget(true); // Show the widget
-  //     }
-
-  //     if (word === 'useobj') {
-  //       console.log('double-clicked on useobjhh');
-  //       const currentVersion = versions.find(version => version.id === currentVersionId);
-  //       if (!currentVersion) {
-  //         console.log('No current version found');
-  //         return;
-  //       }
-    
-  //       const currentreuseableSVGElementList = currentVersion.reuseableSVGElementList;
-  //       console.log('reuseableSVGElementList', currentVersion, currentreuseableSVGElementList);
-    
-  //       if (currentreuseableSVGElementList) {
-  //         const cursorPosition = editorRef.current?.selectionStart || 0;
-  //         const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //         setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //         setShowModifyObjWidget(true); // Show the widget
-  //         //setSelectedCodeText(''); // Reset the selected code text
-  //         console.log('clicked on modifyobj', showModifyObjWidget)
-  //       } else {
-  //         console.log('reuseableSVGElementList is undefined or empty');
-  //       }
-  //     }
-
-
-  //   if (word == 'coord'){
-  //     setHintKeywords(word);
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //     setCoordcompletePosition({ top: position.top + 50, left: position.left });
-  //     setShowCoordcomplete(true);
-  //   }
-  //   else if(word != 'context'&&word != 'useobj'&&word != 'cachedobjects'){
-  //     setHintKeywords(word);
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //     setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //     // const initialOptions = [word]; // You can replace this with an array of initial options if available
-  //     // setOptionLevels([{ options: initialOptions, position }]);
-  //     setShowGenerateOption(true);
-  //   }
-  // };
+    if (word == 'coord'){
+      setHintKeywords(word);
+      const cursorPosition = editorRef.current?.selectionStart || 0;
+      const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
+      setCoordcompletePosition({ top: position.top + 50, left: position.left });
+      setShowCoordcomplete(true);
+    }
+    else if(word != 'context'&&word != 'useobj'&&word != 'cachedobjects'){
+      setHintKeywords(word);
+      const cursorPosition = editorRef.current?.selectionStart || 0;
+      const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
+      setAutocompletePosition({ top: position.top + 50, left: position.left });
+      // const initialOptions = [word]; // You can replace this with an array of initial options if available
+      // setOptionLevels([{ options: initialOptions, position }]);
+      setShowGenerateOption(true);
+    }
+  };
 
   // const handleRightClick = (event: React.MouseEvent) => {
   //   event.preventDefault();
@@ -433,6 +295,62 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   //   }
   // };
 
+  const generatewithAPI = async (prompt: string, callback: (response: string) => void) => {
+  
+    try {
+      if (!api_key) {
+        throw new Error("AnthropicGen API key not set");
+      }
+  
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": api_key,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+          "anthropic-dangerous-direct-browser-access": "true", 
+        },
+        body: JSON.stringify({
+          model: "claude-3-haiku-20240307",
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      });
+  
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+  
+      const data = await response.json();
+      const genresp = data.content[0].text;
+      callback(genresp);
+    } catch (err) {
+      console.error('Error in generatewithAPI:', err);
+    }
+  };
+
+  const handleResponse = (content: string, levelIndex: number) => {
+    console.log('content', content)
+    const options = content.split('\n').filter(Boolean);
+    const position = { top: autocompletePosition.top, left: autocompletePosition.left };
+    //setOptionLevels([{ options, position }]); // Initialize with the first level
+    setOptionLevels((prevLevels) => {
+      const updatedLevels = [...prevLevels];
+      updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
+      return updatedLevels;
+    });
+    console.log('option levels:', optionLevels)
+    setGeneratedOptions(options); //just to pass variables to proceedfunction
+    setShowAutocomplete(true)
+  };
+
   const handleUpGenerate = async (hint: string, levelIndex = 0) => {
     setButtonchoice('up') // for ...
     let prompt = '';
@@ -443,31 +361,9 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     }
 
     try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
   };
 
@@ -481,36 +377,17 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       prompt = handleRightGenerateprompt_word + hint
     }
     console.log('generate prompt', prompt)
-    try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
 
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+    try {
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
+
   };
 
   const handleDownGenerate = async (hint: string, levelIndex = 0) => {
+    console.log('down')
     setButtonchoice('down') // for ...
     let prompt = '';
     if (hint.includes(' ')) {
@@ -519,57 +396,15 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       prompt = handleDownGenerateprompt_word + hint
     }
 
+    console.log('prompt', prompt)
+
     try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const data = await response.data;
-      const content = data?.content;
-      if (content) {
-        const options = content.split('\n').filter(Boolean);
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('option levels:', optionLevels)
-        setGeneratedOptions(options); //just to pass variables to proceedfunction
-        setShowAutocomplete(true)
-        }
-    } catch (error) {
-      console.error('Error processing request:', error);
+      await generatewithAPI(prompt, (content) => handleResponse(content, levelIndex));
+    } catch (err) {
+      console.log('err', err)
     }
   };
 
-  const handleExistingCode = async (hint: string, levelIndex = 0) => {
-    const currentreuseableSVGElementList = versions.find(version => version.id === currentVersionId)?.reuseableSVGElementList;
-    
-    if (currentreuseableSVGElementList) {
-      const codenamelist = currentreuseableSVGElementList.map(item => item.codeName)
-      const options = codenamelist;
-      console.log('codelist', options)
-      setShowAutocomplete(true)
-      setButtonchoice('')
-      if(options.length >0){
-        const position = { top: autocompletePosition.top, left: autocompletePosition.left };
-        //setOptionLevels([{ options, position }]); // Initialize with the first level
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: options, position: position });
-          return updatedLevels;
-        });
-        console.log('optionlevels set', optionLevels)
-      }
-
-    }
-  };
 
   const handleAutocompleteOptionClick = (option: string, hintText: string) => {
     const currentValue = userjs;
@@ -626,36 +461,24 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         prompt = handleRightGenerateprompt_word+option    
       }
     }
-    
     try {
-      const response = await axios.post(ngrok_url_sonnet, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt }),
+      await generatewithAPI(prompt, (content) => 
+      {const newOptions = content.split('\n').filter(Boolean);
+      const newPosition = {
+        top: optionLevels.length > 0 ? optionLevels[levelIndex].position.top : 0,
+        left: optionLevels.length > 0 ? optionLevels[levelIndex].position.left + 200 : 0,
+      };
+      
+      setOptionLevels((prevLevels) => {
+        const updatedLevels = [...prevLevels];
+        updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: newOptions, position: newPosition });
+        return updatedLevels;
       });
-
-      const data = await response.data;
-      const content = data?.content;
-      console.log('proceedgeneration, option', option, prompt, content)
-      if (content) {
-        const newOptions = content.split('\n').filter(Boolean);
-        const newPosition = {
-          top: optionLevels.length > 0 ? optionLevels[levelIndex].position.top : 0,
-          left: optionLevels.length > 0 ? optionLevels[levelIndex].position.left + 200 : 0,
-        };
-        
-        setOptionLevels((prevLevels) => {
-          const updatedLevels = [...prevLevels];
-          updatedLevels.splice(levelIndex + 1, prevLevels.length - levelIndex - 1, { options: newOptions, position: newPosition });
-          return updatedLevels;
-        });
-        console.log('proceed: optionlevels', optionLevels)
-      }
-    } catch (error) {
-      console.error('Error processing request:', error);
-    }
+      console.log('proceed: optionlevels', optionLevels)
+    });
+    } catch (err) {
+      console.log('err', err)
+    }    
   };
   
   const GenerateOptionWidget = ({ hintKeywords }: { hintKeywords: string }) => (
@@ -678,7 +501,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         <button onClick={() => handleUpGenerate(hintKeywords)}>🔼</button>
         <button onClick={() => handleRightGenerate(hintKeywords)}>🔄</button>
         <button onClick={() => handleDownGenerate(hintKeywords)}>🔽</button>
-        <button onClick={() => handleExistingCode(hintKeywords)}>℀</button>
       </div>
     </div>
   );
@@ -821,15 +643,14 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       setShowModifyObjWidget(false)
 
   };
-  
   const ModifyObjWidget = () => {
     const currentVersion = versions.find((version) => version.id === currentVersionId);
     const currentreuseableSVGElementList = currentVersion?.reuseableSVGElementList || [];
     const [objNameInput, setObjNameInput] = useState(currentSelectedSVG); // State for the object name input
     const [currentPieceName, setCurrentPieceName] = useState(''); // Track the currently clicked piece name
-    const [savedSvgCodeText, setSavedSvgCodeText] = useState('')
     const [piecePrompts, setPiecePrompts] = useState({}); // Store prompts for each piece
     const [groupNameInput, setGroupNameInput] = useState('');
+    const [showLocalSvgCodeText, setShowLocalSvgCodeText] = useState(showSvgCodeText);
     const iframeRef = useRef<HTMLIFrameElement>(null);
     useEffect(() => {
         // console.log('ModifyObjWidget useeffect called', svgCodeText)
@@ -966,47 +787,47 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           </body>
           </html>
           `);
-          console.log('ifram code', `
-                      <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              html, body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                overflow: hidden;
-                background-color: white;
-              }
-              svg {
-                width: auto;
-                height: 100%;
-                max-width: 100%;
-                object-fit: contain;
-              }
-              #container {
-                width: 100%;
-                height: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                background-color: white;
-              }
-            </style>
-          </head>
-          <body>
-            <div id="container">
-              ${sanitize_removeattributes(svgCode)}
-            </div>
-          </body>
-          </html>
-          `)
+          // console.log('ifram code', `
+          //             <!DOCTYPE html>
+          // <html lang="en">
+          // <head>
+          //   <meta charset="UTF-8">
+          //   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          //   <style>
+          //     html, body {
+          //       margin: 0;
+          //       padding: 0;
+          //       width: 100%;
+          //       height: 100%;
+          //       display: flex;
+          //       justify-content: center;
+          //       align-items: center;
+          //       overflow: hidden;
+          //       background-color: white;
+          //     }
+          //     svg {
+          //       width: auto;
+          //       height: 100%;
+          //       max-width: 100%;
+          //       object-fit: contain;
+          //     }
+          //     #container {
+          //       width: 100%;
+          //       height: 100%;
+          //       display: flex;
+          //       justify-content: center;
+          //       align-items: center;
+          //       background-color: white;
+          //     }
+          //   </style>
+          // </head>
+          // <body>
+          //   <div id="container">
+          //     ${sanitize_removeattributes(svgCode)}
+          //   </div>
+          // </body>
+          // </html>
+          // `)
           iframeDocument.close(); // Close the document to complete writing
         }
       }
@@ -1224,7 +1045,9 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     };
 
     const handleShowSVGClick = (codeName: string, codeText: string) => {
+      console.log('clicked handleShowSVGClick')
       setShowSvgCodeText(codeText);
+      setShowLocalSvgCodeText(codeText);
       setCurrentSelectedSVG(codeName)
   };
 
@@ -1634,6 +1457,63 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     });
     console.log('check version', versions.find(version => version.id === currentVersionId))
   };
+
+  const saveForNew =()=>{
+    // Clone the object from currentVersion or cachedObjectsLog based on currentSelectedSVG
+    const currentVersion = versions.find(version => version.id === currentVersionId);
+    // const cachedObjectsLog = JSON.parse(sessionStorage.getItem('cachedobjects')) || {};
+
+    // Find the object in reuseableSVGElementList
+    let OriginalObject_reuseableSVGElementList = currentVersion.reuseableSVGElementList.find(item => item.codeName === currentSelectedSVG);
+
+    if (!OriginalObject_reuseableSVGElementList) {
+      console.error('Original object not found for codeName:', currentSelectedSVG);
+      return;
+    }
+
+    // Clone the original object and create a variation
+    const clonedObject_reuseableSVGElementList = { ...OriginalObject_reuseableSVGElementList };
+    const OriginalCodeName_reuseableSVGElementList = OriginalObject_reuseableSVGElementList.codeName;
+    clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_variation`; // Append variation to original codeName
+    var updatedcontent = showLocalSvgCodeText.slice();
+    // Update the cloned object with the new SVG code
+      clonedObject_reuseableSVGElementList.codeText = updatedcontent;
+
+      // Replace or add the cloned object back to the reuseableSVGElementList
+      var updatedVersion = {
+        ...currentVersion,
+        reuseableSVGElementList: [
+          ...currentVersion.reuseableSVGElementList.filter(item => item.codeName !== clonedObject_reuseableSVGElementList.codeName),
+          clonedObject_reuseableSVGElementList
+        ],
+        highlightedSVGPieceList: []
+      };
+
+      setVersions(prevVersions => {
+        const updatedVersions = prevVersions.map(version => {
+          // Ensure `id` is always defined with a default value
+          const versionId = version.id ?? 'default-id'; // Provide a default value if `id` is undefined
+          
+          // If the versionId matches the currentVersionId, update the version
+          if (versionId === currentVersionId) {
+            return { ...updatedVersion, id: versionId }; // Use the updated version and ensure the id is set
+          }
+      
+          // Otherwise, return the version unchanged but ensure the id is defined
+          return { ...version, id: versionId };
+        });
+      
+        // Return the updated versions array
+        return updatedVersions;
+      });
+  }
+
+  const copyContextToCode =()=>{
+    var svgstring = JSON.stringify(showSvgCodeText.toString())
+    var newclasscode = 'var savedsvg = ' +svgstring+ '\n'+classcode.js
+    setClassCode({js:newclasscode})
+    console.log('current class code', classcode)
+  }
     
   return (
     <div
@@ -1704,7 +1584,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
 
                 <span
                   onClick={() => {
-                    if (showModifyObjButton) {
+                    if (showModifyObjWidget) {
                       handleModifyobjOptionClick(item.codeName, '');
                     } else {
                       handleUseobjOptionClick(item.codeName, '');
@@ -1780,6 +1660,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                   }}
                 >
                   SVG
+                  Str+
                 </button>
               </li>
             ))}
@@ -1807,11 +1688,56 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             </div>
           </div>
         )}
-        {showSvgCodeText && (
-          <div className="hovered-element-text">
-            <pre>{showSvgCodeText}</pre>
-          </div>
-        )}        
+{showSvgCodeText && (
+  <div className="svg-preview-container" style={{ flexGrow: 2, marginLeft: '10px' }}>
+    <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+      {/* Editable SVG code area */}
+      <textarea
+        value={showLocalSvgCodeText} // Initialize the editable SVG code from showSvgCodeText
+        onChange={(e) => setShowLocalSvgCodeText(e.target.value)}
+        placeholder="Edit SVG Code"
+        style={{
+          width: '100%',
+          height: '100px',
+          padding: '5px',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          marginBottom: '10px',
+        }}
+      />
+
+      {/* Buttons for "Copy to Code" and "Save for New" */}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button
+          onClick={copyContextToCode}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#f0f0f0',
+            border: '1px solid #ccc',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Copy Context to Code
+        </button>
+
+        <button
+          onClick={saveForNew}
+          style={{
+            padding: '5px 10px',
+            backgroundColor: '#f0f0f0',
+            border: '1px solid #ccc',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          Save for New
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+       
       </div>
 
       {/* Right side for SVG preview and inputs */}
@@ -1923,428 +1849,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             Annotate group
           </button>
         </div>
-      </div>
-    </div>
-  );
-};
-
-
-  
-const CheckSVGPieceWidget = ({ svgCode, pieceCodeName }: { svgCode: string, pieceCodeName: string }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const sanitizeSVG = (svgString: string) => {
-    // Sanitize the SVG string if necessary here
-    return svgString.trim(); // Just a simple trim for now, more sanitization can be added if needed
-  };
-  useEffect(() => {
-      const iframe = iframeRef.current;
-      if (iframe) {
-          const iframeDocument = iframe.contentDocument;
-          const updatedSvgCode = highlightPiece(svgCode, pieceCodeName);
-
-          if (iframeDocument) {
-              iframeDocument.write(`
-              <!DOCTYPE html>
-              <html lang="en">
-              <head>
-                  <meta charset="UTF-8">
-                  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                  <title>SVG Render</title>
-                  <style>
-                      html, body {
-                        margin: 0;
-                        padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        display: flex;
-                        justify-content: center;
-                        align-items: center;
-                        overflow: hidden;
-                      }
-                      #canvasContainer {
-                        position: relative;
-                        width: 100%;
-                        height: 100%;
-                      }
-                      svg {
-                        width: 100%;
-                        height: 100%;
-                      }
-                  </style>
-              </head>
-              <body>
-              <div id="canvasContainer">
-                  ${sanitizeSVG(updatedSvgCode)}
-              </div>
-        </body>
-              </html>
-              `);
-              iframeDocument.close(); // Ensure the document is closed after writing
-              // const canvasContainer = iframeDocument.getElementById('canvasContainer');
-              // if (canvasContainer) {
-              //     appendSVGToContainer(canvasContainer, svgCode);
-              // }
-          }
-      }
-  }, [svgCode]);
-
-  // const appendSVGToContainer = (container: HTMLElement, svgCode: string) => {
-  //     console.log('in appendSVGToContainer', svgCode, pieceCodeName)
-  //     const updatedSvgCode = highlightPiece(svgCode, pieceCodeName);
-  //     const svgElement = new DOMParser().parseFromString(updatedSvgCode, 'image/svg+xml').querySelector('svg');
-  //     console.log('updated element', updatedSvgCode, svgElement)
-  //     container.appendChild(svgElement);
-  // };
-
-  function toggleSvgElementClosure(svgString: string) {
-    // First, check if it's a self-closing tag
-    if (svgString.endsWith('/>')) {
-      // If it's self-closing, change it to an open-and-close tag
-      return svgString.replace('/>', `></${svgString.match(/^<(\w+)/)[1]}>`);
-    } else {
-      // If it's not self-closing, make it self-closing
-      return svgString.replace(/><\/\w+>$/, '/>');
-    }
-  }
-
-  function highlightAndReplaceSVG(svgText: string, pieceText: string): string {
-    // Step 1: Find the matching piece in svgText
-    const placeholder = '[placeholder]';
-
-    //incase the difference of self-closing or not, check both
-    const pieceText2 = toggleSvgElementClosure(pieceText);
-
-    // Step 3: Determine which version (pieceText or pieceText_alternative) contains the self-closing `/>`
-    var pieceText3 = pieceText2.includes('/>') ? pieceText2 : pieceText;
-
-    // Step 4: Check if it contains ` />` (a space before the self-closing tag)
-    if (pieceText3.includes('/>')) {
-        // Replace ` />` with `/>` (remove the space)
-        pieceText3 = pieceText3.replace('/>', ' />');
-    }
-
-    const matchedPiece1 = svgText.includes(pieceText) ? pieceText : '';
-    const matchedPiece2 = svgText.includes(pieceText2) ? pieceText2 : '';
-    const matchedPiece3 = svgText.includes(pieceText3) ? pieceText3 : '';
-
-    const matchedPiece = matchedPiece1 || matchedPiece2 || matchedPiece3;
-
-    console.log('3 piece choices', pieceText, pieceText2, pieceText3)
-
-    if (!matchedPiece) {
-        console.log('No matching piece found in the SVG.', 'svgtext\n', svgText, 'piecetext\n', pieceText);
-        return svgText;
-    }
-
-    // Step 2: Replace the match string with [placeholder]
-    const updatedSVGText = svgText.replace(matchedPiece, placeholder);
-
-    // Step 3: Turn pieceText into a DOM element (pieceElement)
-    const parser = new DOMParser();
-    const pieceDoc = parser.parseFromString(pieceText, 'image/svg+xml');
-    const pieceElement = pieceDoc.querySelector('*');  // Adjust selector if pieceText could be something other than a path
-
-    if (pieceElement) {
-        // Step 4: Highlight the piece
-        const originalStroke = pieceElement.getAttribute('stroke') || 'none';
-        const originalStrokeWidth = pieceElement.getAttribute('stroke-width') || '0';
-        pieceElement.setAttribute('data-original-stroke', originalStroke);
-        pieceElement.setAttribute('data-original-stroke-width', originalStrokeWidth);
-        pieceElement.setAttribute('stroke', 'yellow');
-        pieceElement.setAttribute('stroke-width', (parseFloat(originalStrokeWidth) + 10).toString());
-        pieceElement.setAttribute('data-highlighted', 'true');
-
-        // Step 5: Get the updated piece text
-        const updatedPieceText = pieceElement.outerHTML;
-
-        // Step 6: Replace the placeholder with updatedPieceText
-        const finalSVGText = updatedSVGText.replace(placeholder, updatedPieceText);
-
-        return finalSVGText;
-    }
-
-    console.log('Failed to parse the piece element.');
-    return svgText;
-}
-  const highlightPiece = (svgCode: string, pieceCodeName: string) => {
-      // Find the matching SVG element by comparing codeText with the pieceName
-      const currentVersion = versions.find(version => version.id === currentVersionId);
-      const pieceText = currentVersion?.previousSelectedSVGPieceList.find(item => item.codeName === pieceCodeName)?.codeText;
-      const updatedSvgCode = highlightAndReplaceSVG(svgCode, pieceText)
-      return updatedSvgCode
-  };
-
-  return (
-      <div
-          className="check-svg-piece-widget"
-          style={{
-              position: 'absolute',
-              top: autocompletePositionbackup.top,
-              left: autocompletePositionbackup.left,
-              zIndex: 1000,
-              backgroundColor: 'white',
-              border: '1px solid #ccc',
-              padding: '10px',
-              boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-              display: 'flex',
-              fontSize: '14px',
-          }}
-      >
-          <div className="inputsandbuttons-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <div
-                  style={{
-                      width: '200px',
-                      height: '200px',
-                      border: '1px solid #ccc',
-                      marginBottom: '10px',
-                  }}
-              >
-                  {svgCode && (
-                      <iframe
-                          ref={iframeRef}
-                          style={{ width: '100%', height: '100%', border: 'none' }}
-                      />
-                  )}
-              </div>
-          </div>
-      </div>
-  );
-};
-
-const CheckWholeSVGWidget = ({ svgCode, pieceCodeName }) => {
-  const iframeRef = useRef(null);
-
-  const sanitizeSVG = (svgString) => {
-    // Sanitize the SVG string if necessary here
-    return svgString.trim(); // Simple trim; add more sanitization if needed
-  };
-
-  useEffect(() => {
-    const iframe = iframeRef.current;
-
-    if (iframe) {
-      const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
-      if (iframeDocument) {
-        iframeDocument.open(); // Open the document for writing
-        iframeDocument.write(`
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-              <meta charset="UTF-8">
-              <meta name="viewport" content="width=device-width, initial-scale=1.0">
-              <title>SVG Render</title>
-              <style>
-                  html, body {
-                    margin: 0;
-                    padding: 0;
-                    width: 100%;
-                    height: 100%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    overflow: hidden;
-                  }
-                  #canvasContainer {
-                    position: relative;
-                    width: 100%;
-                    height: 100%;
-                  }
-                  svg {
-                    width: 100%;
-                    height: 100%;
-                  }
-              </style>
-          </head>
-          <body>
-              <div id="canvasContainer">
-                  ${sanitizeSVG(svgCode)}
-              </div>
-          </body>
-          </html>
-        `);
-        iframeDocument.close(); // Ensure the document is closed after writing
-      }
-    }
-  }, [svgCode]);
-
-  return (
-    <div
-      className="check-whole-svg-widget"
-      style={{
-        position: 'absolute',
-        top: autocompletePosition.top,
-        left: autocompletePosition.left,
-        zIndex: 1000,
-        backgroundColor: 'white',
-        border: '1px solid #ccc',
-        padding: '10px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-        display: 'flex',
-        fontSize: '14px',
-      }}
-    >
-      <div
-        className="svg-preview-container"
-        style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-      >
-        <div
-          style={{
-            width: '200px',
-            height: '200px',
-            border: '1px solid #ccc',
-            marginBottom: '10px',
-          }}
-        >
-          {svgCode && (
-            <iframe
-              ref={iframeRef}
-              style={{ width: '100%', height: '100%', border: 'none' }}
-            />
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-  
-const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: string | null, versions: Version[] }) => {
-  const [expandedKeys, setExpandedKeys] = useState<string[]>([]); // To track which objects are expanded
-
-  // Find the current version and access its cachedobjectslog
-  //const currentVersion = versions.find((version) => version.id === currentVersionId);
-  //const cachedObjectsLog = currentVersion?.cachedobjectslog || {}; // Assuming cachedobjectslog is an object
-  const cachedObjectsLog = JSON.parse((sessionStorage.getItem('cachedobjects')))
-  console.log('check cachedobjectsLog', cachedObjectsLog)
-  // Function to toggle the expansion of an object or sub-object
-  const toggleExpand = (key: string) => {
-    setExpandedKeys((prev) =>
-      prev.includes(key) ? prev.filter((item) => item !== key) : [...prev, key]
-    );
-  };
-
-  // Function triggered by right-click with the key and parent keys as parameters
-  const handleClickinCachedObj = (keyPath: string[]) => {
-    //event.preventDefault(); // Prevent the default context menu from opening
-    console.log('Right-clicked on key:', keyPath.join('.'));
-    const combinedText = keyPath.join('.');
-    const currentValue = userjs;
-    const cursorPosition = editorRef.current?.selectionStart || 0;
-    const textBeforeCursor = currentValue.slice(0, cursorPosition+'cachedobjects'.length);
-    const textAfterCursor = currentValue.slice(cursorPosition+'cachedobjects'.length);
-    const newText = textBeforeCursor + '.'+ combinedText + textAfterCursor;
-    setuserJs(newText);
-    setShowCachedObjWidget(false);
-    // You can replace this console.log with the actual function you want to trigger
-    // For example:
-    // myFunction(keyPath);
-  };
-
-  // Recursive function to render the object structure with a tree-like hierarchy
-  const renderObject = (obj: any, parentKey = '', level = 0, parentKeys: string[] = []): JSX.Element => {
-    return (
-      <ul style={{ listStyleType: 'none', paddingLeft: `${20 * level}px`, position: 'relative' }}>
-        {Object.keys(obj).map((key) => {
-          const value = obj[key];
-          const fullKey = parentKey ? `${parentKey}.${key}` : key; // Create a unique key for nested objects
-          const currentKeyPath = [...parentKeys, key]; // Accumulate keys up to the current level
-          
-          return (
-            <li key={fullKey} style={{ position: 'relative' }}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  padding: '5px',
-                  marginBottom: '5px',
-                  cursor: typeof value === 'object' && value !== null ? 'pointer' : 'default',
-                  backgroundColor: typeof value === 'object' && value !== null ? '#e0e0e0' : 'transparent',
-                  position: 'relative',
-                  borderLeft: level > 0 ? '2px solid black' : 'none', // Adds the vertical line for sub-objects
-                }}
-                onClick={() => handleClickinCachedObj(currentKeyPath)} // Trigger by normal left click
-                onContextMenu={(event) => {
-                  event.preventDefault(); // Prevent the default right-click menu
-                  if (typeof value === 'object' && value !== null) {
-                    toggleExpand(fullKey); // Trigger toggleExpand on right-click
-                  }
-                }}
-              >
-                {typeof value === 'object' && value !== null ? (
-                  <>
-                    <strong
-                      style={{
-                        marginRight: '10px',
-                        flexGrow: 1,
-                        display: 'inline-block',
-                      }}
-                    >
-                      {key}:
-                    </strong> 
-                    {expandedKeys.includes(fullKey) ? '' : '{...}'}
-                  </>
-                ) : (
-                  <>
-                    <strong style={{ marginRight: '5px' }}>{key}</strong>
-                    : <span>{`${value}`}</span>
-                  </>
-                )}
-  
-                {/* Only show tree connection line for expanded objects */}
-                {expandedKeys.includes(fullKey) && typeof value === 'object' && value !== null && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '-20px',
-                      width: '20px',
-                      height: '2px',
-                      // backgroundColor: 'black',
-                    }}
-                  ></div>
-                )}
-              </div>
-  
-              {/* Recursive rendering of sub-objects */}
-              {expandedKeys.includes(fullKey) && typeof value === 'object' && value !== null && (
-                <>
-                  {renderObject(value, fullKey, level + 1, currentKeyPath)} {/* Pass the accumulated keys */}
-                </>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
-  
-  
-
-  return (
-    <div
-      className="cached-obj-widget"
-      style={{
-        position: 'absolute',
-        top: autocompletePosition.top,
-        left: autocompletePosition.left,
-        zIndex: 1000,
-        backgroundColor: 'white',
-        border: '1px solid #ccc',
-        padding: '10px',
-        boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-        display: 'flex',
-        fontSize: '14px',
-        maxHeight: '300px',
-        overflowY: 'auto',
-        width: '600px',
-      }}
-    >
-      <div style={{ overflowY: 'auto', width: '100%' }}>
-        {cachedObjectsLog ? (
-          renderObject(cachedObjectsLog)
-        ) : (
-          <p>No cached objects found.</p>
-        )}
       </div>
     </div>
   );
@@ -2477,31 +1981,22 @@ const CachedObjWidget = ({ currentVersionId, versions }: { currentVersionId: str
       ref={codecomponentRef}
       className="code-editor"
       onKeyDown={handleKeyDown}
-      // onDoubleClick={handleDoubleClick}
+      onDoubleClick={handleDoubleClick}
       // onContextMenu={handleRightClick}
     >
       {loading && <div className="loading-container"><ReactLoading type="spin" color="#007bff" height={50} width={50} /></div>}
-      {/* <div className="tabs">
-        <button className="tab-button" onClick={() => setActiveTab(activeTab === 'js' ? 'html' : 'js')}>
-          Switch to {activeTab === 'js' ? 'Backend HTML' : 'User JS'}
-        </button>
-      </div> */}
-      {showCheckSVGPieceWidget && <CheckSVGPieceWidget svgCode={svgCodeText_checkpiece} pieceCodeName={currentSelectedSVG} />}
-      {showCheckWholeSVGWidget && <CheckWholeSVGWidget svgCode={svgCodeText_checkwholesvg} pieceCodeName={currentSelectedSVG} />}
       {showModifyObjWidget && <ModifyObjWidget />}
       {showGenerateOption && optionLevels.length === 0 && <GenerateOptionWidget hintKeywords={hintKeywords} />}
       {showAutocomplete && optionLevels.map((level, index) => (
         <AutocompleteWidget key={index} options={level.options} levelIndex={index} />
       ))}
       {showCoordcomplete && <CoordcompleteWidget />}
-      {showCachedObjWidget && <CachedObjWidget currentVersionId={currentVersionId} versions={versions} />}
-      
+      {/* {showCachedObjWidget && <CachedObjWidget currentVersionId={currentVersionId} versions={versions} />}
+       */}
       <div>
       {renderEditor()}
       <button onClick={() => onRunUserCode({ js: userjs })}>Run User Code</button>
-      </div>      {/* <div className="button-group">
-        
-      </div> */}
+      </div> 
     </div>
   );
   

@@ -74,11 +74,41 @@ function renderSvg(svgstring, coord = { x: 50, y: 50 }, scale = 1, tl = null, tr
   placeSvg(svgstring, window.canvas, coord, scale, tl, tr, bl, br)
 }
 
+const sanitize_removeattributes = (svgString) => {
+    // Parse the SVG string into a DOM object
+    const parser = new DOMParser();
+    const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+    const svgElement = svgDoc.querySelector('svg');
+
+    if (svgElement) {
+      // Check if the SVG element has width and height attributes but no viewBox
+      const hasViewBox = svgElement.hasAttribute('viewBox');
+      const widthAttr = svgElement.getAttribute('width');
+      const heightAttr = svgElement.getAttribute('height');
+
+      if (!hasViewBox && widthAttr && heightAttr) {
+        // Set viewBox using the width and height attributes
+        const width = parseFloat(widthAttr);
+        const height = parseFloat(heightAttr);
+        svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
+      }
+
+      // Remove the width and height attributes from the SVG element
+      svgElement.removeAttribute('width');
+      svgElement.removeAttribute('height');
+
+      // Return the sanitized SVG string
+      return new XMLSerializer().serializeToString(svgElement);
+    }
+
+    return svgString.trim(); // In case it's not valid SVG, return the original string
+  };
+
 function placeSvg(svgstring, canvas, coord = {
     x: 50,
     y: 50
 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
-    const content = svgstring;
+    const content = sanitize_removeattributes(svgstring);
 
     // Create a DOMParser to parse the SVG content
     const parser = new DOMParser();

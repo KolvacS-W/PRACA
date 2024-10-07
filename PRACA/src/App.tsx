@@ -548,6 +548,8 @@ const App: React.FC = () => {
             </div>
             <div className="code-editor-container">
             <CustomCodeEditor
+              classcode = {classcode}
+              setClassCode = {setClassCode}
               ngrok_url_sonnet = {ngrok_url_sonnet}
               api_key = {api_key}
               usercode={versions.find(version => version.id === currentVersionId)!.usercode}

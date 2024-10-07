@@ -9,6 +9,10 @@ class CSPY {
     toString() {
         return Object.entries(this).map(([key, value]) => `${key}: ${value}`).join("\n");
     }
+
+    getClassName() {
+        return this.constructor.name;
+       }
 }
 
 
@@ -27,8 +31,13 @@ class Input {
         this.explanation = explanation;
         this.defaultValue = defaultValue;
         this.type = type;
+        this.inputtype = "Input";
+
     }
 
+    static reconstitute(inJSON) {
+        return(new Input(inJSON.description,inJSON.defaultValue,inJSON.explanation,inJSON.type));
+    }
     /**
      * 
      * @returns {string}
@@ -54,6 +63,12 @@ class StaticInput extends Input {
     constructor(description, defaultValue=undefined, explanation="", type="string") {
         //console.log("STATIC INPUT",description, defaultValue, explanation, type);
         super(description, defaultValue, explanation, type);
+        this.inputtype = "StaticInput";
+
+    }
+
+    static reconstitute(inJSON) {
+        return(new StaticInput(inJSON.description,inJSON.defaultValue,inJSON.explanation,inJSON.type));
     }
 }
 
@@ -71,6 +86,12 @@ class ContextInput extends Input {
             contextObject = contextObject.toString();
         }
         super(description, contextObject, "", "svg_string");
+        this.inputtype = "ContextInput";
+
+    }
+
+    static reconstitute(inJSON) {
+        return(new ContextInput(inJSON.description,inJSON.defaultValue));
     }
 }
 
@@ -86,6 +107,7 @@ class RandomChoiceInput extends Input {
         this.description = description;
         this.choices = choices;
         this.type = type;
+        this.inputtype = "RandomChoiceInput";
     }
 
     /**
@@ -133,12 +155,14 @@ class Prompt {
     }
 }
 
+
 class AnthropicGen {
 
     // make as singleton pattern
     static instance = undefined;
     static apiKey = undefined;
     static model = "claude-3-5-sonnet-20240620";
+    //static model = "claude-3-haiku-20240307";
 
     /**
      * 
@@ -245,6 +269,219 @@ class AnthropicGen {
           callback(genresp);
         });
     }
+
+    /**
+     * 
+     * @param {string} prompts 
+     * @returns {string}
+     */
+    async generateMultiturn(prompts,callback) {
+        if (!AnthropicGen.apiKey) {
+            throw new Error("AnthropicGen API key not set");
+        }
+        //CSPYCompiler.log("using model: " + AnthropicGen.model);
+
+        var messages = [];
+        var genresp = undefined;
+
+        while (prompts.length > 0) {
+            //console.log("****",prompts);
+            var prompt = prompts.shift();
+
+            messages.push({role:"user",content:[{type:"text",text:prompt}]});
+
+            //console.log("---- PROMPTS")
+            //console.log(prompts);
+
+            //console.log("---- MESSAGES")
+            //console.log(messages);
+
+            
+
+            var response = await fetch("https://api.anthropic.com/v1/messages", {
+                method: "POST",
+                headers: {
+                "x-api-key": AnthropicGen.apiKey,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+                "anthropic-dangerous-direct-browser-access": "true",
+                },
+                body: JSON.stringify({
+                model: AnthropicGen.model,
+                max_tokens: 2048,
+                messages: messages,
+                }),
+            });
+
+            var json = await response.json();
+            genresp = json.content[0].text;
+            CSPYCompiler.log(genresp);
+            messages.push({role: "assistant",content: [{ type: "text", text: genresp },],});
+        }
+        callback(genresp);
+    }
+}   
+
+class OpenAIGen {
+
+    // make as singleton pattern
+    static instance = undefined;
+    static apiKey = undefined;
+    static model = "gpt-4o-mini";
+
+    /**
+     * 
+     */
+    constructor(key) {
+        if (!OpenAIGen.instance) {
+            OpenAIGen.instance = this;
+        }
+        if (key == undefined) {
+            this.loadKey();
+        } else {
+            OpenAIGen.apiKey = key;
+        }
+        return(OpenAIGen.instance);
+    }
+
+    static setModel(model) {
+        OpenAIGen.model = model;
+    }
+
+    async loadKey() {
+        try {
+            // Use fetch to read the file instead of require('fs')
+            OpenAIGen.apiKey = process.env.OAI_CSPY_KEY;
+            if (OpenAIGen.apiKey) {
+                return;
+            }
+        } catch (err) {
+            // do nothing, key is not set
+        }
+        try {
+            // try to fetch from the .key file if running in browser
+            await fetch('.key')
+                .then(response => response.text())
+                .then(key => {
+                    OpenAIGen.apiKey = key.trim();
+                    CSPYCompiler.log(OpenAIGen.apiKey);
+                    return;
+                })
+                .catch(err => {
+                    console.error('Error fetching API key:', err);
+                });
+             
+        } catch (err) {
+
+        }
+        CSPYCompiler.log(OpenAIGen.apiKey);
+    }
+
+    /**
+     * 
+     * @returns {OpenAIGen}
+     */
+    static getInstance() {
+        if (!OpenAIGen.instance) {
+            OpenAIGen.instance = new OpenAIGen();
+        }
+        return OpenAIGen.instance;
+    }
+
+    /**
+     * 
+     * @param {string} apiKey 
+     */
+    static setApiKey(apiKey) {
+        OpenAIGen.apiKey = apiKey;
+    }
+
+    /**
+     * 
+     * @param {string} prompt 
+     * @returns {string}
+     */
+    async generate(prompt,callback) {
+        if (!OpenAIGen.apiKey) {
+            throw new Error("OpenAIGen API key not set");
+        }
+        //CSPYCompiler.log("using model: " + OpenAIGen.model);
+
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+        headers: {
+                "authorization": "Bearer " + OpenAIGen.apiKey,
+                "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: OpenAIGen.model,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          //console.log(data.choices[0]);
+          const genresp = data.choices[0].message.content;
+          callback(genresp);
+        });
+    }
+
+    /**
+     * 
+     * @param {string} prompts 
+     * @returns {string}
+     */
+    async generateMultiturn(prompts,callback) {
+        if (!OpenAIGen.apiKey) {
+            throw new Error("OpenAIGen API key not set");
+        }
+        //CSPYCompiler.log("using model: " + OpenAIGen.model);
+
+        var messages = [];
+        var genresp = undefined;
+
+        while (prompts.length > 0) {
+            //console.log("****",prompts);
+            var prompt = prompts.shift();
+
+            messages.push({role:"user",content:[{type:"text",text:prompt}]});
+
+            //console.log("---- PROMPTS")
+            //console.log(prompts);
+
+            //console.log("---- MESSAGES")
+            //console.log(messages);
+
+            
+
+            var response = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                "authorization": "Bearer " + OpenAIGen.apiKey,
+                "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                model: OpenAIGen.model,
+                max_tokens: 2048,
+                messages: messages,
+                }),
+            });
+
+            var json = await response.json();
+            genresp = data.choices[0].message.content;
+            CSPYCompiler.log(genresp);
+            messages.push({role: "assistant",content: [{ type: "text", text: genresp },],});
+        }
+        callback(genresp);
+    }
 }   
 
 class SVGGen {
@@ -283,6 +520,12 @@ class SVGGen {
     static toJSON() {
         return JSON.stringify(this.prototype,null,2);
     }
+
+    getClassName() {
+
+        return this.constructor.name;
+      
+       }
 }
 
 /**
@@ -291,7 +534,7 @@ class SVGGen {
 class CSPYCompiler {
 
 
-    static logEnable = true;
+    static logEnable = false;
 
     static setLogEnable(enable) {
         CSPYCompiler.logEnable = enable;
@@ -323,7 +566,6 @@ class CSPYCompiler {
                         this.inputs[name].defaultValue = propValues[idx];
                     }
                 });
-                console.log('check herehhh', this)
             }
 
             async getSVG(callback = undefined) {
@@ -353,7 +595,7 @@ class CSPYCompiler {
                         }
                         contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
                     } else {
-                        console.log(prop,typeof tProp);
+                        CSPYCompiler.log(prop,typeof tProp);
                     }
                    });
                    
@@ -371,9 +613,15 @@ class CSPYCompiler {
                 
 
                 CSPYCompiler.log(prompt);
-                var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
-                    this.setSVG(resp);
-                });
+                if (this.llm == 'OpenAI') {
+                    var genresp = await OpenAIGen.getInstance().generate(prompt, (resp) => {
+                        this.setSVG(resp);
+                    });
+                } else {
+                    var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
+                        this.setSVG(resp);
+                    });
+                }
                 return super.getSVG(callback);
             }
 
@@ -489,9 +737,15 @@ class CSPYCompiler {
                 }
 
                 CSPYCompiler.log(prompt);
-                var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
-                    this.setTemplate(resp);
-                });
+                if (this.llm == 'OpenAI') {
+                    var genresp = await OpenAIGen.getInstance().generate(prompt, (resp) => {
+                        this.setTemplate(resp);
+                    });
+                } else {
+                    var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
+                        this.setTemplate(resp);
+                    });
+                }
                 this.fillTemplate();
                 return super.getSVG(callback);
             }
@@ -509,32 +763,36 @@ class CSPYCompiler {
                     return new Function(...names, `return \`${this}\`;`)(...vals);
                   }
                 
-                  const props = Object.getOwnPropertyNames(this);
+                  //console.log(this.inputs);
+                  const props = Object.keys(this.inputs);
                   const tvals = {};
-                  props.forEach(prop => {
-                    if (prop == "prompt") {
-                        return;
-                    }
-                    if (prop == "svgString") {
-                        return;
-                    }
-                    if (prop == "svgTemplate") {
-                        return;
-                    }
-                    tvals[prop] = this[prop];
-                   });
-
+                  props.forEach((prop) => {
+                    var tProp = this.inputs[prop];
+                    //console.log(prop,tProp.defaultValue);
+                    tvals[prop] = tProp.defaultValue;
+                  });
                 const template = this.svgTemplate;
-                CSPYCompiler.log(tvals);
+                //CSPYCompiler.log("****",tvals);
                 this.svgString = template.interpolate(tvals);
                 //return this.svgString;
             }
 
             update(...propValues) {
                 var toRet = this.clone();
-                propNames.forEach((name, idx) => {
-                    toRet[name] = propValues[idx];
+                var iputs = {};
+                var toRetPNames = [];
+                const props = Object.keys(this.inputs);
+                var idx = 0;
+                props.forEach((prop) => {
+                    var tProp = this.inputs[prop];
+                    tProp = tProp.clone();
+                    tProp.defaultValue = propValues[idx];
+                    iputs[prop] = tProp;
+                    toRetPNames.push(prop);
+                    idx++;
                 });
+                toRet.inputs = iputs;
+                toRet.propNames = toRetPNames;
                 toRet.svgTemplate = this.svgTemplate;
                 toRet.svgString = undefined;
                 return toRet;
@@ -553,74 +811,129 @@ class CSPYCompiler {
             constructor(...propValues){
                 super();
                 propNames.forEach((name, idx) => {
-                    this[name] = propValues[idx];
+                    if (propValues[idx] == undefined) {
+                        this[name] = this.inputs[name].defaultValue;
+                        return;
+                    } else {
+                        //console.log(name,idx,propValues[idx]);
+                        this[name] = propValues[idx];
+                        this.inputs[name].defaultValue = propValues[idx];
+                    }
                 });
             }
 
-            async getSVG(callback=undefined) {
+            async getSVG(callback = undefined) {
                 if (this.svgString) {
                     CSPYCompiler.log("Returning cached SVG");
                     return super.getSVG(callback);
                 }
-                if (typeof this.fillTemplate === "function") {
-                    return this.fillTemplate();
+                if (typeof this.fillTemplateInternal === "function") {
+                    CSPYCompiler.log("Returning cached function");
+                    this.fillTemplate();
+                    return super.getSVG(callback);
                 }
 
-                this.svgString = "";
+                var p1 = "We will be constructing an image of a " + this.prompt + "using simple SVG constructs."+
+                "Describe the process by which we would construct the image. Include details "+
+                "about determining the placement and size of each part relative to others. "+
+                "Do this step by step. We will want the parameterize the following features:\n";
 
-                const props = Object.getOwnPropertyNames(this);
+                var p2 = "Use the step by step instructions to construct a javascript function "+
+                "called fillTemplate. fillTemplate will accept an argument of an object "+
+                "that holds the parameters. For example {'a':5,'b':'red'}\n"+
+                "The output of fillTemplate will be an SVG stringthat generates the image using SVG. The javascript function should not use "+
+                "browser features or external libraries. It should work by concatenating text "+
+                "to build the SVG. Return the javascript function and nothing else. There should "+
+                "be no text before or after the function. You should expect the dictionary object that "+
+                "is fed to fillTemplate to have the following: "
 
-                var prompt = "Generate a javascript function called fillTemplate"+
-                    " that returns SVG code for '" + 
-                    this.prompt + 
-                    "'. the argument to fillTemplate should be a object where the " +
-                    " keys are the properties and values are the property values." +
-                    "For example, we might run fillTemplate({'size':5,'color':'red'})\n"+
-                    "\nIn the SVG, label the parts of the object so they are easier to update. " +
-                    "\nThe response should be entirely javascript code, "+
-                    "there should be no other text before or after the function.\n" +
-                    "The properties I am interested in are: \n";
-                    
-
+                const props = Object.keys(this.inputs);
+                var contextPromptString = undefined;
                 props.forEach(prop => {
-                    if (prop == "prompt") {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
                         return;
                     }
-                    if (prop == "svgString") {
-                        return;
+                    
+                    if (tProp instanceof StaticInput) {
+                        p1 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                        p2 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                    } else if (tProp instanceof ContextInput) {
+                        if (!contextPromptString) {
+                            contextPromptString = "";
+                        }
+                        contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
                     }
-                    if (prop == "svgTemplate") {
-                        return;
-                    }
-                    prompt += `${prop}\n`;
-                });
-                                
+                   });
+                
+                console.log('code compiler prompt', p1, p2)
+                this.svgString = "";
+        
                 //CSPYCompiler.log(prompt);
-                var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
-                   this.setTemplate(resp);
-                });
+                CSPYCompiler.log(p1);
+                CSPYCompiler.log(p2);
+                if (this.llm == 'OpenAI') {
+                    var genresp = await OpenAIGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                        this.setTemplate(resp);
+                        });
+                } else {
+                    var genresp = await AnthropicGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                    this.setTemplate(resp);
+                    });
+                }
                 //this.setTemplate("function fillTemp(props) { CSPYCompiler.log('yay!');}");
                 //return this.fillTemplate();
                 return super.getSVG(callback);
             }
 
+            fillTemplate() {
+                const props = Object.keys(this.inputs);
+                var tVals = {};
+                props.forEach(prop => {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
+                        return;
+                    }
+                    
+                    if (tProp instanceof StaticInput) {
+                        tVals[prop] = tProp.defaultValue;
+                    }
+                });
+                //console.log(tVals);
+                this.svgString = this.fillTemplateInternal(tVals);
+                //this.svgTemplate = templateString;
+                //return(this.svgTemplate);
+            }
+
+
             setTemplate(templateString) {
                 //CSPYCompiler.log("****" + svgString)
                 // eval the string and set
                 CSPYCompiler.log(templateString);
-                var func = eval("var fillTemp="+templateString+"\nfillTemp;");
+                var func = eval("var fillTemplateInternal="+templateString+"\nfillTemplateInternal;");
+                Object.getPrototypeOf(this).fillTemplateInternal = func;
                 //CSPYCompiler.log(func);
-                Object.getPrototypeOf(this).fillTemp = func;
-                this.fillTemp([]);
-                //this.svgTemplate = templateString;
+                this.fillTemplate();
             }
+
 
             update(...propValues) {
                 var toRet = this.clone();
-                propNames.forEach((name, idx) => {
-                    toRet[name] = propValues[idx];
+                var iputs = {};
+                var toRetPNames = [];
+                const props = Object.keys(this.inputs);
+                var idx = 0;
+                props.forEach((prop) => {
+                    var tProp = this.inputs[prop];
+                    tProp = tProp.clone();
+                    tProp.defaultValue = propValues[idx];
+                    iputs[prop] = tProp;
+                    toRetPNames.push(prop);
+                    idx++;
                 });
-                toRet.svgTemplate = this.svgTemplate;
+                toRet.inputs = iputs;
+                toRet.propNames = toRetPNames;
+                // the clone should now have a contextinput, so
                 toRet.svgString = undefined;
                 return toRet;
             }
@@ -633,6 +946,8 @@ class CSPYCompiler {
         newclass.prototype.properties = props;
         newclass.prompt = prompt;
         newclass.properties = props;
+        newclass.prototype.className = tempInst.getClassName();
+        newclass.className = tempInst.getClassName();
         var inputs = {};
         for (var i = 0; i < props.length; i++) {
            var iput = tempInst[props[i]];
@@ -648,60 +963,77 @@ class CSPYCompiler {
 
     }
 
-    static compilePrompt(inpr) {
+    static compilePrompt(inpr,llm="Anthropic") {
         var tempInst = new inpr();
         // read all properties of tempInst and load into an array
         var props = Object.getOwnPropertyNames(tempInst);
         props = props.filter(prop => prop !== "prompt");
         var newclass = this.createPromptClass(...props);
         newclass.prototype['compiler'] = "prompt";
+        newclass.prototype['llm'] = llm;
         return this.compileGeneric(newclass,inpr,tempInst,props);
     }
 
-    static compileTemplate(inpr) {
+    static compileTemplate(inpr,llm="Anthropic") {
         var tempInst = new inpr();
         // read all properties of tempInst and load into an array
         var props = Object.getOwnPropertyNames(tempInst);
         props = props.filter(prop => prop !== "prompt");
         var newclass = this.createTemplateClass(...props);
-        return this.compileGeneric(newclass,inpr,tempInst,props);
         newclass.prototype['compiler'] = "template";
+        newclass.prototype['llm'] = llm;
+        return this.compileGeneric(newclass,inpr,tempInst,props);
+        
     }
 
-    static compileChat(inpr) {
+    static compileChat(inpr,llm="Anthropic") {
         return SVGGen;
     }
 
-    static compileCode(inpr) {
+    static compileCode(inpr,llm="Anthropic") {
         var tempInst = new inpr();
         // read all properties of tempInst and load into an array
         var props = Object.getOwnPropertyNames(tempInst);
         props = props.filter(prop => prop !== "prompt");
         var newclass = this.createCodeClass(...props);
         newclass.prototype['compiler'] = "code";
+        newclass.prototype['llm'] = llm;
         return this.compileGeneric(newclass,inpr,tempInst,props);
     }
 
-    static compileMixed(inpr) {
+    static compileMixed(inpr,llm="Anthropic") {
         return SVGGen;
     }
 
-    static compile(inpr,outtype="prompt") {
+    static compileFromJSON(inJSON) {
+        var outtype = "prompt";
+        var llm = "Anthropic";
+        if (inJSON.compiler) {
+            outtype = inJSON.compiler;
+        }
+        if (inJSON.llm) {
+            llm = inJSON.llm;
+        }
+        var inputNames = inJSON.inputs.keys();
+
+    }
+
+    static compile(inpr,outtype="prompt",llm="Anthropic") {
         // check if inpr is a function
         if (!inpr instanceof CSPY) {
             throw new Error("Object does not extend CSPY");
         }
 
         if (outtype == "prompt") {
-            return this.compilePrompt(inpr);
+            return this.compilePrompt(inpr,llm);
         } else if (outtype == "template") {
-            return this.compileTemplate(inpr);
+            return this.compileTemplate(inpr,llm);
         } else if (outtype == "chat") {
-            return this.compileChat(inpr);
+            return this.compileChat(inpr,llm);
         } else if (outtype == "code") {
-            return this.compileCode(inpr);
+            return this.compileCode(inpr,llm);
         } else if (outtype == "mixed") {
-            return this.compileMixed(inpr);
+            return this.compileMixed(inpr,llm);
         }
     }
 }

@@ -1,181 +1,33 @@
-import React, { useEffect, useRef } from 'react';
+var savedsvg = "<svg width=\"400\" height=\"300\" viewBox=\"0 0 400 300\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect x=\"50\" y=\"100\" width=\"300\" height=\"150\" fill=\"#CCCCCC\" />\n<rect x=\"40\" y=\"80\" width=\"320\" height=\"20\" fill=\"brown\" />\n<rect id=\"mybrick1\" x=\"300\" y=\"40\" width=\"30\" height=\"40\" fill=\"#888888\" />\n<rect id=\"mybrick2\" x=\"280\" y=\"140\" width=\"40\" height=\"60\" stroke=\"yellow\" fill=\"white\" />\n<rect x=\"80\" y=\"140\" width=\"40\" height=\"60\" stroke=\"yellow\" fill=\"white\" />\n<rect x=\"180\" y=\"140\" width=\"40\" height=\"60\" stroke=\"yellow\" fill=\"white\" />\n<rect x=\"170\" y=\"150\" width=\"60\" height=\"100\" fill=\"yellow\" />\n</svg>"
 
-interface ResultViewerProps {
-  usercode: {
-    js: string;
-  };
-  backendcode: {
-    html: string;
-  };
-  activeTab: string;
+console.log('in class code')
+class SimpleHouse extends CSPY {
+    prompt = new Prompt("a modern farmhouse with numerous energy-efficient windows");
+    roof_color = new StaticInput("roof color");
+    window_number = new StaticInput("number of windows, from 2-8");
+    mybrick_color = new StaticInput('color of mybrick')
+    context = new ContextInput("starting context", savedsvg)
 }
 
-const ngrok_url = 'https://0e5b-35-221-58-30.ngrok-free.app';
-const ngrok_url_sonnet = ngrok_url + '/api/message';
+var apiKey = ''
 
-const ResultViewer: React.FC<ResultViewerProps> = ({ usercode, backendcode, activeTab }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+setBackground('lightgreen')
 
-  useEffect(() => {
-    if (iframeRef.current) {
-      const iframe = iframeRef.current;
-      const iframeDocument = iframe.contentDocument;
+const ag = new AnthropicGen(apiKey);
+// await ag.loadKey();
 
-      if (iframeDocument) {
-        // Clear existing content
-        iframeDocument.open();
-        iframeDocument.write('<!DOCTYPE html><html lang="en"><head></head><body></body></html>');
-        iframeDocument.close();
-        console.log('cleared', iframeDocument);
+var simple = CSPYCompiler.compile(SimpleHouse,"code");
 
-        // Create the new content
-        const newDocument = iframeDocument;
-        if (newDocument) {
-          newDocument.open();
-          if (activeTab === 'html') {
-            // Render backend HTML when HTML tab is selected
-            iframeDocument.write(backendcode.html);
-          } 
-          else if (activeTab === 'js'){
-          newDocument.write(`
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Fabric.js Library Example</title>
-            </head>
-            <body>
-                <canvas id="c"></canvas>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
-                <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-                <script>
-                  // Define create_canvas and make it globally accessible
-                  window.create_canvas = function create_canvas(canvas_height = 600, canvas_width = 600, canvas_color) {
-                    const canvas = new fabric.Canvas('c', {
-                      backgroundColor: canvas_color
-                    });
+console.log('A')
+var inst1 = new simple("red",3, "green");
+console.log('B')
 
-                    canvas.setHeight(canvas_height);
-                    canvas.setWidth(canvas_width);
+//save svg to UI, no name
+var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString));
 
-                    return canvas;
-                  }
+//save svg to UI, no name 
+var inst2 = inst1.update("brown",5, "orange")
+var svg2 =await inst2.getSVG((svgString) => saveSVG(svgString));
+console.log('inst2:', inst2)
 
-                  // Check if the Generate class has already been defined
-                  if (!window.Generate) {
-                    class Generate {
-                      constructor(name) {
-                        this.ngrok_url_sonnet = '${ngrok_url_sonnet}';
-                        this.basic_prompt = name;
-                        this.detail_prompt = '';
-                        console.log('object created:', name);
-                      }
-
-                      detail(detail) {
-                        this.detail_prompt = detail;
-                        console.log('detail added:', detail);
-                      }
-
-                      async draw(coord, canvas, ngrok_url_sonnet = this.ngrok_url_sonnet) {
-                        const APIprompt = 'write me svg code to create a ' + this.basic_prompt + ', with these details: ' + this.detail_prompt + '. Make sure donot include anything other than the svg code in your response.';
-                        console.log('api prompt', APIprompt);
-                        console.log(ngrok_url_sonnet);
-                        try {
-                          const response = await axios.post(ngrok_url_sonnet, {
-                            prompt: APIprompt
-                          }, {
-                            headers: {
-                              'Content-Type': 'application/json'
-                            }
-                          });
-
-                          const data = response.data;
-                          const content = data?.content;
-                          console.log('content from api call:', content);
-
-                          if (content) {
-                            fabric.loadSVGFromString(content, (objects, options) => {
-                              const group = fabric.util.groupSVGElements(objects, options);
-                              group.set({
-                                left: coord.x - group.width / 2,
-                                top: coord.y - group.height / 2
-                              });
-                              var leftpos = coord.x - group.width / 2;
-                              var toppos = coord.y - group.height / 2;
-
-                              canvas.add(group);
-                              canvas.renderAll();
-                              this.generateEquivalentCode(canvas, content, leftpos, toppos);
-                            });
-                          }
-                        } catch (error) {
-                          console.error('Error drawing the shape:', error);
-                        }
-                      }
-
-                      generateEquivalentCode(canvas, svgContent, leftpos, toppos) {
-                        console.log('left', leftpos);
-                        console.log('svg', svgContent);
-                        const htmlCode = \`<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SVG Example</title>
-    <style>
-        body {
-            margin: 0;
-            background-color: \`+canvas.backgroundColor+\`;
-            width: \`+canvas.width+\`px;
-            height: \`+canvas.height+\`px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-        }
-        svg {
-            position: absolute;
-            left: \`+leftpos+\`px;
-            top: \`+toppos+\`px;
-            /* transform: translate(-50%, -50%); Center the SVG at the coord point */
-        }
-    </style>
-</head>
-<body>\`
-    +svgContent+
-    \`
-</body>
-</html>\`;
-                        console.log('Equivalent HTML code:', htmlCode);
-                      }
-                    }
-
-                    // Assign the class to the global window object
-                    window.Generate = Generate;
-                  }
-
-                  (function() {
-                    ${usercode.js}
-                  })();
-                </script>
-            </body>
-            </html>
-          `);
-        }
-          newDocument.close();
-        }
-      }
-      console.log('loaded', iframeDocument);
-    }
-    
-  }, [usercode]);
-
-  return (
-    <div className="result-viewer">
-      <iframe key={JSON.stringify(usercode)} ref={iframeRef} title="Result Viewer" />
-    </div>
-  );
-};
-
-export default ResultViewer;
+renderSvg(svg1, {x:50, y: 50}, 0.8)

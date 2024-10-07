@@ -328,7 +328,6 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
     }
   };
 
-
   const handleAutocompleteOptionClick = (option: string, hintText: string) => {
     const currentValue = classcode.js;
     const cursorPosition = editorRef.current?.selectionStart || 0;
@@ -342,8 +341,6 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
     setOptionLevels([]);
     setButtonchoice('');
   };
-
-
 
   const proceedGeneration = async (option: string, levelIndex: number) => {
     let prompt = '';

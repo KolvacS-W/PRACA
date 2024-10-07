@@ -1,13 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CodeEditor from '@uiw/react-textarea-code-editor';
-import ReactLoading from 'react-loading';
-import { Version, KeywordTree } from '../types';
-import axios from 'axios';
-import ResultViewer from './ResultViewer'; // Import the ResultViewer component
+import { Version } from '../types';
 
 interface ClassEditorProps {
   api_key: string;
-  ngrok_url_sonnet: string;
   currentVersionId: string | null;
   setVersions: React.Dispatch<React.SetStateAction<Version[]>>;
   versions: Version[];
@@ -18,13 +14,8 @@ interface ClassEditorProps {
   onRunClassCode: () => void; // Add this prop
 }
 
-// const ngrok_url = 'https://82b7-34-46-65-154.ngrok-free.app';
-// const ngrok_url_sonnet = ngrok_url + '/api/message';
-// const ngrok_url_haiku = ngrok_url + '/api/message-haiku';
-
 const ClassEditor: React.FC<ClassEditorProps> = ({
   api_key,
-  ngrok_url_sonnet,
   currentVersionId,
   versions,
   classcode, setClassCode, onRunClassCode

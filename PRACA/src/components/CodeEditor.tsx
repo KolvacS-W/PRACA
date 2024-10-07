@@ -1,55 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CodeEditor from '@uiw/react-textarea-code-editor';
 import ReactLoading from 'react-loading';
-import { Version, KeywordTree } from '../types';
-import axios from 'axios';
-import ResultViewer from './ResultViewer'; // Import the ResultViewer component
-import { flushSync } from 'react-dom';
+import { Version } from '../types';
 
 interface CodeEditorProps {
   classcode: {js: string},
   setClassCode: React.Dispatch<React.SetStateAction<{ js: string }>>;
   api_key: string;
-  backendcode: { html: string }; // backend hidden
   usercode: { js: string }; // user use
-  onApplyjs: (usercode: { js: string }, backendCode: { html: string }) => void;
-  onApplyhtml: (usercode: { js: string }) => void;
-  description: string;
-  savedOldCode: { html: string; css: string; js: string };
-  keywordTree: KeywordTree[];
-  wordselected: string;
   currentVersionId: string | null;
   setVersions: React.Dispatch<React.SetStateAction<Version[]>>;
   versions: Version[];
-  extractKeywords: (description: string) => KeywordTree[];
-  activeTab: string;
-  setActiveTab: (tab: string) => void; // Passed from parent (App component)
   onRunUserCode: (usercode: { js: string }) => void; // Add this prop
-  ngrok_url_sonnet: string
 }
-
-// const API_KEY = '';
-// const ngrok_url = 'https://82b7-34-46-65-154.ngrok-free.app';
-// const ngrok_url_sonnet = ngrok_url + '/api/message';
-// const ngrok_url_haiku = ngrok_url + '/api/message-haiku';
 
 const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   classcode,
   setClassCode,
   api_key,
-  ngrok_url_sonnet,
   usercode,
-  backendcode,
   currentVersionId,
   setVersions,
   versions,
-  activeTab,
   onRunUserCode
 }) => {
   const codecomponentRef = useRef<HTMLDivElement>(null);
-  const [backendhtml, setbackendHtml] = useState(backendcode.html);
   const [userjs, setuserJs] = useState(usercode.js);
-  // const [codeactiveTab, setActiveTab] = useState(activeTab);
   const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [showGenerateOption, setShowGenerateOption] = useState(false);
   const [showCoordcomplete, setShowCoordcomplete] = useState(false);
@@ -66,16 +42,16 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   const [optionLevels, setOptionLevels] = useState<{ options: string[]; position: { top: number; left: number } }[]>([]);
   const [buttonchoice, setButtonchoice] = useState('');
   //for modifyobjwidget
-  const [svgCodeText, setSvgCodeText] = useState('');
-  const [initialSvgCodeText, setInitialSvgCodeText] = useState('');
+  const [svgCodeText, setSvgCodeText] = useState('');//current svg str, used for highlights, dynamic
+  const [initialSvgCodeText, setInitialSvgCodeText] = useState('');//current svg str, original
   const [showModifyObjWidget, setShowModifyObjWidget] = useState(true);
   const [currentSelectedSVG, setCurrentSelectedSVG] = useState(''); // State to store the current codeName
-  const [showmodifyobjbutton, setShowModifyObjButton] = useState(false);
-  const [showsvgstr, setShowSvgStr] = useState<string | null>(null);
+  const [showsvgstr, setShowSvgStr] = useState<string | null>(null); //to decide if showing svg str edit window
   //for checksvgpiecewidget
   const [showCheckSVGPieceWidget, setShowCheckSVGPieceWidget] = useState(false)
   const [svgCodeText_checkpiece, setSvgCodeText_checkpiece] = useState('');
-  //for checkwholesvgwidget
+
+  //for auto completion
   const handleUpGenerateprompt_word = `Given a word, give me 5 words that are a more abstract and general level of the given word. 
         The more abstract level of a word can be achieved by finding hypernyms of that word.
         For example, “motor vehicle” is one level more abstract than “car”, “self-propelled vehicle” is one level more abstract than “motor vehicle”, “wheeled vehicle” is one level more abstract than “self-propelled vehicle”; “color” is one level more abstract than “blue”.
@@ -112,20 +88,15 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
 
 
   useEffect(() => {
-    setbackendHtml(backendcode.html);
+    // setbackendHtml(backendcode.html);
     setuserJs(usercode.js);
-  }, [usercode, backendcode]);
+  }, [usercode]);
 
-  // useEffect(() => {
-  //   console.log('showModifyObjWidget changed:', showModifyObjWidget);
-  // }, [showModifyObjWidget]);
-  
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (codecomponentRef.current && codecomponentRef.current.contains(event.target as Node)) {
         var clickedOutside = true;
-      console.log('code click outside', showModifyObjWidget)
           // Check if the click is inside the generate option widget
       const generateOptionWidget = document.getElementById('code-generate-option-widget');
       if (generateOptionWidget && generateOptionWidget.contains(event.target as Node)) {
@@ -192,93 +163,19 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           });
           setSvgCodeText('');
           setShowSvgStr(null);
-          setShowModifyObjButton(false);
-          // setButtonchoice('');
         }
       }
       
     };  
     
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
-  // const saveVersionToHistory = (currentVersionId: string) => {
-  //   setVersions((prevVersions) => {
-  //     const updatedVersions = prevVersions.map((version) => {
-  //       if (version.id === currentVersionId) {
-  //         const historyVersion = { ...version, id: `${currentVersionId}-history` };
-  //         return { ...version, history: historyVersion };
-  //       }
-  //       return version;
-  //     });
-  //     return updatedVersions;
-  //   });
-  // };
 
-
-
-  //auto completion
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    const selection = window.getSelection();
-    const word = selection?.toString().trim();
-
-    if (event.key === '$') {
-      const cursorPosition = editorRef.current?.selectionStart || 0;
-      const textBeforeCursor = userjs.slice(0, cursorPosition);
-      const hintText = textBeforeCursor.split('$').pop();
-      if (hintText) {
-        setHintKeywords(hintText);
-        const position = getCaretCoordinates(editorRef.current, cursorPosition - hintText.length - 1);
-        setAutocompletePosition({ top: position.top, left: position.left });
-        setShowAutocomplete(true);
-      }
-    }
-
-  };
-
-  // const handleDoubleClick = (event: React.MouseEvent) => {
-  //   const selection = window.getSelection();
-  //   const word = selection?.toString().trim();
-
-  //   const currentVersion = versions.find(version => version.id === currentVersionId);
-  //   if (!currentVersion) {
-  //     console.log('No current version found');
-  //     return;
-  //   }
-  
-
-  //     // if (word === 'cachedobjects') {
-  //     //   console.log('double-clicked on cachedobjects');
-
-  //     //   const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     //   const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //     //   setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //     //   setShowCachedObjWidget(true); // Show the widget
-  //     // }
-
-
-  //   if (word == 'coord'){
-  //     setHintKeywords(word);
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //     setCoordcompletePosition({ top: position.top + 50, left: position.left });
-  //     setShowCoordcomplete(true);
-  //   }
-  //   else if(word != 'context'&&word != 'useobj'&&word != 'cachedobjects'){
-  //     setHintKeywords(word);
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
-  //     setAutocompletePosition({ top: position.top + 50, left: position.left });
-  //     // const initialOptions = [word]; // You can replace this with an array of initial options if available
-  //     // setOptionLevels([{ options: initialOptions, position }]);
-  //     setShowGenerateOption(true);
-  //   }
-  // };
-
+//auto completion widgets
   const handleRightClick = (event: React.MouseEvent) => {
     event.preventDefault();
     const selection = window.getSelection();
@@ -622,29 +519,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     );
   };
 
-  // const handleModifyobjOptionClick = (option: string, hintText: string) => {
-  //   const word = 'modifyobj'
-  //     //const codeNames = currenthighlightedSVGPieceList.map(item => item.codeName).join('\', \'');
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const textBeforeCursor = userjs.slice(0, cursorPosition+word.length);
-  //     const textAfterCursor = userjs.slice(cursorPosition+word.length);
-  //     const newText = textBeforeCursor + '= {objname: \'' + option + '\', piecenames: [], pieceprompts: []}'+ textAfterCursor;
-  //     setuserJs(newText);
-  //     setShowModifyObjWidget(false)
-
-  // };
-
-  // const handleUseobjOptionClick = (option: string, hintText: string) => {
-  //   const word = 'useobj'
-  //     //const codeNames = currenthighlightedSVGPieceList.map(item => item.codeName).join('\', \'');
-  //     const cursorPosition = editorRef.current?.selectionStart || 0;
-  //     const textBeforeCursor = userjs.slice(0, cursorPosition+word.length);
-  //     const textAfterCursor = userjs.slice(cursorPosition+word.length);
-  //     const newText = textBeforeCursor + ': {objname: \'' + option + '\'}'+ textAfterCursor;
-  //     setuserJs(newText);
-  //     setShowModifyObjWidget(false)
-
-  // };
+//modifyobj widget
   const ModifyObjWidget = () => {
     const currentVersion = versions.find((version) => version.id === currentVersionId);
     const currentreuseableSVGElementList = currentVersion?.reuseableSVGElementList || [];
@@ -652,43 +527,43 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     const [currentPieceName, setCurrentPieceName] = useState(''); // Track the currently clicked piece name
     const [piecePrompts, setPiecePrompts] = useState({}); // Store prompts for each piece
     const [groupNameInput, setGroupNameInput] = useState('');
-    const [showLocalSvgCodeText, setShowLocalSvgCodeText] = useState(showsvgstr);
-
-
+    const [showLocalSvgCodeText, setShowLocalSvgCodeText] = useState(showsvgstr); //use for svg str edit
     const iframeRef = useRef<HTMLIFrameElement>(null);
-    //to re-render
+
+    //sanitize svg code to render correctly
+    const sanitize_removeattributes = (svgString: string) => {
+      // Parse the SVG string into a DOM object
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
+      const svgElement = svgDoc.querySelector('svg');
+  
+      if (svgElement) {
+        // Check if the SVG element has width and height attributes but no viewBox
+        const hasViewBox = svgElement.hasAttribute('viewBox');
+        const widthAttr = svgElement.getAttribute('width');
+        const heightAttr = svgElement.getAttribute('height');
+  
+        if (!hasViewBox && widthAttr && heightAttr) {
+          // Set viewBox using the width and height attributes
+          const width = parseFloat(widthAttr);
+          const height = parseFloat(heightAttr);
+          svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
+        }
+  
+        // Remove the width and height attributes from the SVG element
+        svgElement.removeAttribute('width');
+        svgElement.removeAttribute('height');
+  
+        // Return the sanitized SVG string
+        return new XMLSerializer().serializeToString(svgElement);
+      }
+  
+      return svgString.trim(); // In case it's not valid SVG, return the original string
+    };
+    //to re-render svg edit
     useEffect(() => {
         // console.log('ModifyObjWidget useeffect called', svgCodeText)
         const iframe = iframeRef.current;
-        const sanitize_removeattributes = (svgString: string) => {
-          // Parse the SVG string into a DOM object
-          const parser = new DOMParser();
-          const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
-          const svgElement = svgDoc.querySelector('svg');
-      
-          if (svgElement) {
-            // Check if the SVG element has width and height attributes but no viewBox
-            const hasViewBox = svgElement.hasAttribute('viewBox');
-            const widthAttr = svgElement.getAttribute('width');
-            const heightAttr = svgElement.getAttribute('height');
-      
-            if (!hasViewBox && widthAttr && heightAttr) {
-              // Set viewBox using the width and height attributes
-              const width = parseFloat(widthAttr);
-              const height = parseFloat(heightAttr);
-              svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
-            }
-      
-            // Remove the width and height attributes from the SVG element
-            svgElement.removeAttribute('width');
-            svgElement.removeAttribute('height');
-      
-            // Return the sanitized SVG string
-            return new XMLSerializer().serializeToString(svgElement);
-          }
-      
-          return svgString.trim(); // In case it's not valid SVG, return the original string
-        };
         
         if (iframe) {
           const iframeDocument = iframe.contentDocument || iframe.contentWindow.document;
@@ -740,37 +615,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         }
       }, [svgCodeText]);
 
-    // small preview
+    // render small svg preview
     const renderSVGInIframe = (previewiframeRef: React.RefObject<HTMLIFrameElement>, svgCode: string) => {
-      const sanitize_removeattributes = (svgString: string) => {
-        // Parse the SVG string into a DOM object
-        const parser = new DOMParser();
-        const svgDoc = parser.parseFromString(svgString, 'image/svg+xml');
-        const svgElement = svgDoc.querySelector('svg');
-    
-        if (svgElement) {
-          // Check if the SVG element has width and height attributes but no viewBox
-          const hasViewBox = svgElement.hasAttribute('viewBox');
-          const widthAttr = svgElement.getAttribute('width');
-          const heightAttr = svgElement.getAttribute('height');
-    
-          if (!hasViewBox && widthAttr && heightAttr) {
-            // Set viewBox using the width and height attributes
-            const width = parseFloat(widthAttr);
-            const height = parseFloat(heightAttr);
-            svgElement.setAttribute('viewBox', `0 0 ${width} ${height}`);
-          }
-    
-          // Remove the width and height attributes from the SVG element
-          svgElement.removeAttribute('width');
-          svgElement.removeAttribute('height');
-    
-          // Return the sanitized SVG string
-          return new XMLSerializer().serializeToString(svgElement);
-        }
-    
-        return svgString.trim(); // In case it's not valid SVG, return the original string
-      };
       
       const iframe = previewiframeRef.current;
       if (iframe) {
@@ -863,6 +709,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       }
     };
 
+    //functions to click and highlight svg pieces
     const handlePieceClick = (pieceCodeName: string) => {
       // Keep the current prompts intact while selecting the new piece
       setCurrentPieceName(pieceCodeName);
@@ -987,7 +834,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           element = element.parentElement;
       }
       return element;
-  }
+    }
     const toggleHighlight = (event: MouseEvent) => {
         event.stopPropagation();
         const target = event.currentTarget as SVGElement;
@@ -1029,8 +876,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         }
     };
 
-  
-
+    //render svg edit window
     const handleRenderSVGClick = (codeName: string, codeText: string) => {
         setSvgCodeText(codeText);
         setInitialSvgCodeText(codeText);
@@ -1039,6 +885,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         setCurrentSelectedSVG(codeName)
     };
 
+    //render svg str edit window
     const handleShowSVGClick = (codeName: string, codeText: string) => {
       setSvgCodeText('');
       setShowSvgStr(codeText);
@@ -1046,7 +893,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       setCurrentSelectedSVG(codeName);
     };
     
-
+    
     const handleRenameObject = () => {
       if (!objNameInput) return;
       setCurrentSelectedSVG(objNameInput);
@@ -1082,80 +929,9 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         return updatedVersions;
       });
     };
+  
 
-    //for showing pieces
-    function toggleSvgElementClosure(svgString: string) {
-      // First, check if it's a self-closing tag
-      if (svgString.endsWith('/>')) {
-        // If it's self-closing, change it to an open-and-close tag
-        return svgString.replace('/>', `></${svgString.match(/^<(\w+)/)[1]}>`);
-      } else {
-        // If it's not self-closing, make it self-closing
-        return svgString.replace(/><\/\w+>$/, '/>');
-      }
-    }
-  
-    function highlightAndReplaceSVG(svgText: string, pieceText: string): string {
-      // Step 1: Find the matching piece in svgText
-      const placeholder = '[placeholder]';
-  
-      //incase the difference of self-closing or not, check both
-      const pieceText2 = toggleSvgElementClosure(pieceText);
-  
-      // Step 3: Determine which version (pieceText or pieceText_alternative) contains the self-closing `/>`
-      var pieceText3 = pieceText2.includes('/>') ? pieceText2 : pieceText;
-  
-      // Step 4: Check if it contains ` />` (a space before the self-closing tag)
-      if (pieceText3.includes('/>')) {
-          // Replace ` />` with `/>` (remove the space)
-          pieceText3 = pieceText3.replace('/>', ' />');
-      }
-  
-      const matchedPiece1 = svgText.includes(pieceText) ? pieceText : '';
-      const matchedPiece2 = svgText.includes(pieceText2) ? pieceText2 : '';
-      const matchedPiece3 = svgText.includes(pieceText3) ? pieceText3 : '';
-  
-      const matchedPiece = matchedPiece1 || matchedPiece2 || matchedPiece3;
-  
-      console.log('3 piece choices', pieceText, pieceText2, pieceText3)
-  
-      if (!matchedPiece) {
-          console.log('No matching piece found in the SVG.', 'svgtext\n', svgText, 'piecetext\n', pieceText);
-          return svgText;
-      }
-  
-      // Step 2: Replace the match string with [placeholder]
-      const updatedSVGText = svgText.replace(matchedPiece, placeholder);
-  
-      // Step 3: Turn pieceText into a DOM element (pieceElement)
-      const parser = new DOMParser();
-      const pieceDoc = parser.parseFromString(pieceText, 'image/svg+xml');
-      const pieceElement = pieceDoc.querySelector('*');  // Adjust selector if pieceText could be something other than a path
-  
-      if (pieceElement) {
-          // Step 4: Highlight the piece
-          const originalStroke = pieceElement.getAttribute('stroke') || 'none';
-          const originalStrokeWidth = pieceElement.getAttribute('stroke-width') || '0';
-          pieceElement.setAttribute('data-original-stroke', originalStroke);
-          pieceElement.setAttribute('data-original-stroke-width', originalStrokeWidth);
-          pieceElement.setAttribute('stroke', 'yellow');
-          pieceElement.setAttribute('stroke-width', (parseFloat(originalStrokeWidth) + 10).toString());
-          pieceElement.setAttribute('data-highlighted', 'true');
-  
-          // Step 5: Get the updated piece text
-          const updatedPieceText = pieceElement.outerHTML;
-  
-          // Step 6: Replace the placeholder with updatedPieceText
-          const finalSVGText = updatedSVGText.replace(placeholder, updatedPieceText);
-  
-          return finalSVGText;
-      }
-  
-      console.log('Failed to parse the piece element.');
-      return svgText;
-  };
-
-
+    //functions to modify selected svg pieces
     const handleModifyPieces = () => {
       
       setVersions(prevVersions => {
@@ -1367,6 +1143,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       return updatedVersions;
     });
   };
+
+  //annotated selected svg group
   const handleAnnotateGroup = async (groupNameInput: string, codeText: string) => {
 
     if (version.id === currentVersionId) {
@@ -1395,7 +1173,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       });
       console.log('check annotation prompts', annotated_prompt)
       try {
-        await generatewithAPI(annotated_prompt, (content) => saveForNew(content));
+        await generatewithAPI(annotated_prompt, (content) => saveForNew(content, 'annotation'));
       } catch (err) {
         console.log('err', err)
       }
@@ -1436,8 +1214,9 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     // console.log('check version', versions.find(version => version.id === currentVersionId))
   };
 }
-
-  const saveForNew =(content: string)=>{
+  //make use of svg str
+  const saveForNew =(content: string, type: string)=>{
+    console.log('returned svg:', content, type)
     // Clone the object from currentVersion or cachedObjectsLog based on currentSelectedSVG
     const currentVersion = versions.find(version => version.id === currentVersionId);
     // const cachedObjectsLog = JSON.parse(sessionStorage.getItem('cachedobjects')) || {};
@@ -1453,7 +1232,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     // Clone the original object and create a variation
     const clonedObject_reuseableSVGElementList = { ...OriginalObject_reuseableSVGElementList };
     const OriginalCodeName_reuseableSVGElementList = OriginalObject_reuseableSVGElementList.codeName;
-    clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_variation`; // Append variation to original codeName
+    clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_${type}`; // Append variation to original codeName
     var updatedcontent = content.slice();
     // Update the cloned object with the new SVG code
       clonedObject_reuseableSVGElementList.codeText = updatedcontent;
@@ -1562,13 +1341,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                 </button>
 
                 <span
-                  onClick={() => {
-                    if (showModifyObjWidget) {
-                      handleModifyobjOptionClick(item.codeName, '');
-                    } else {
-                      handleUseobjOptionClick(item.codeName, '');
-                    }
-                  }}
                   style={{
                     width: '120px', // Fixed width
                     overflow: 'hidden',
@@ -1580,9 +1352,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                   {item.codeName}
                 </span>
 
-
-
-                {/* Render the small SVG preview */}
+                {/* Render large SVG edit window */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -1601,15 +1371,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                     padding: '0', // Remove padding to fit the iframe exactly
                   }}                  
                 >
-                  {/* <iframe
-                    srcDoc={renderSVGPreview(item.codeText)}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      border: 'none', // Remove iframe border if not needed
-                      pointerEvents: 'none', // Prevent iframe from blocking clicks
-                    }}
-                  /> */}
                 {/* Render the small SVG preview */}
                 <div style={{ width: '40px', height: '40px', border: 'none', pointerEvents: 'none' }}>
                 <iframe
@@ -1621,6 +1382,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                   }}
                   style={{ width: '100%', height: '100%', border: 'none' }}
                 />
+              {/* {{svg str edit window}} */}
               </div>
                 </button>
                 <button
@@ -1646,9 +1408,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           </ul>
         </div>
 
-
-
-        {/* Large SVG preview iframe at the bottom */}
+        {/* Large SVG edit window */}
         {svgCodeText && (
           <div style={{ marginTop: '10px' }}>
             <div
@@ -1667,10 +1427,10 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             </div>
           </div>
         )}
+        {/* SVG str edit window */}
         {showsvgstr !== null && (
           <div className="svg-preview-container" style={{ flexGrow: 2, marginLeft: '10px' }}>
             <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-              {/* Editable SVG code area */}
               <textarea
                 value={showLocalSvgCodeText} // Initialize the editable SVG code from showSvgCodeText
                 onChange={(e) => {e.stopPropagation(); setShowLocalSvgCodeText(e.target.value)}}
@@ -1701,7 +1461,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
                 </button>
 
                 <button
-                  onClick={()=>saveForNew(showLocalSvgCodeText)}
+                  onClick={()=>saveForNew(showLocalSvgCodeText, 'variation')}
                   style={{
                     padding: '5px 10px',
                     backgroundColor: '#f0f0f0',
@@ -1716,11 +1476,10 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
             </div>
           </div>
         )}
-       
       </div>
 
-      {/* Right side for SVG preview and inputs */}
-      <div className="svg-preview-container" style={{ flexGrow: 2, marginLeft: '10px' }}>
+      {/* Right side for rename, modify and annotate */}
+      <div className="rename-modify-annotate-container" style={{ flexGrow: 2, marginLeft: '10px' }}>
         {/* Input for object name and buttons */}
         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
           <input
@@ -1833,8 +1592,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   );
 };
 
-
-
   const CoordcompleteWidget = () => (
     <div
       ref={widgetRef}
@@ -1869,7 +1626,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     </div>
   );
   
-
   const getCaretCoordinates = (element: HTMLTextAreaElement | null, position: number) => {
     if (!element) return { top: 0, left: 0 };
     const div = document.createElement('div');
@@ -1901,9 +1657,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     return coordinates;
   };
   
-
   const renderEditor = () => {
-    if (activeTab === 'js') {
+    if (true) {
       return (
         <div style={{ 
           height: '600px', 
@@ -1927,31 +1682,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         />
         </div>
       );
-    } else if (activeTab === 'html') {
-      return (
-        <div style={{           
-            height: '600px', 
-            width: '400px', 
-            overflow: 'auto', 
-          }}>
-        <CodeEditor
-          value={backendhtml}
-          language="html"
-          padding={15}
-          style={{
-            fontSize: 15,
-            backgroundColor: '#f5f5f5',
-            fontFamily: 'ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace',
-            //this will do style conflict!
-            // height: '100%',
-            // overflow: 'auto',
-          }}
-          ref={editorRef}
-          onChange={(evn) => setbackendHtml(evn.target.value)}
-        />
-        </div>
-      );
-    }
+    } 
     return null;
   };
 
@@ -1959,7 +1690,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     <div
       ref={codecomponentRef}
       className="code-editor"
-      onKeyDown={handleKeyDown}
       // onDoubleClick={handleDoubleClick}
       onContextMenu={handleRightClick}
     >

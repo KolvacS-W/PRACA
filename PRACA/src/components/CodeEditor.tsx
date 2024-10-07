@@ -1158,14 +1158,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
   
       console.log('Failed to parse the piece element.');
       return svgText;
-  }
-    const highlightPiece = (svgCode: string, pieceCodeName: string) => {
-        // Find the matching SVG element by comparing codeText with the pieceName
-        const currentVersion = versions.find(version => version.id === currentVersionId);
-        const pieceText = currentVersion?.previousSelectedSVGPieceList.find(item => item.codeName === pieceCodeName)?.codeText;
-        const updatedSvgCode = highlightAndReplaceSVG(svgCode, pieceText)
-        return updatedSvgCode
-    };
+  };
 
 
     const handleModifyPieces = () => {
@@ -1369,47 +1362,6 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     console.log('set prompts', prompt)
   };
 
-  // Function to render the small SVG in an iframe for each autocomplete option
-  const renderSVGPreview = (svgCode: string) => {
-    const svgDocument = `
-      <!DOCTYPE html>
-      <html lang="en">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>SVG Render</title>
-          <style>
-              html, body {
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                height: 100%;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                overflow: hidden;
-              }
-              #canvasContainer {
-                position: relative;
-                width: 100%;
-                height: 100%;
-              }
-              svg {
-                width: 100%;
-                height: 100%;
-              }
-          </style>
-      </head>
-      <body>
-        <div id="canvasContainer">
-            ${sanitizeSVG(svgCode)}
-        </div>
-      </body>
-      </html>
-    `;
-    return svgDocument;
-  };
-
   const handleDeleteObject = (versionId: string, codeName: string) => {
     setVersions(prevVersions => {
       const updatedVersions = prevVersions.map(version =>
@@ -1420,7 +1372,38 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       return updatedVersions;
     });
   };
-  const handleAnnotateGroup = (groupNameInput: string) => {
+  const handleAnnotateGroup = async (groupNameInput: string) => {
+
+    if (version.id === currentVersionId) {
+      // var currentVersion = versions.find(version => version.id === currentVersionId);
+      // console.log('check version', currentVersion)
+      const AnnotatedPieces = currentVersion.highlightedSVGPieceList.map(piece => ({
+        codeName: piece.codeText,
+      }));
+
+      const AnnotatedEntry = [{
+        codeName: currentSelectedSVG,
+        pieces: AnnotatedPieces.map(item => item.codeName),
+        groupname: groupNameInput
+      }];
+      var annotated_prompt = 'Modify the following svg code: '+showSvgCodeText
+      // Filter the objects that match the given codeName
+      AnnotatedEntry.forEach(obj => {
+          if (true) {
+              // Collect the groupname and corresponding pieces
+              const group = obj.groupname;
+              const pieces = obj.pieces.join(',');
+
+              // Append to the prompt
+              annotated_prompt += `. \n Annotate ${pieces} as "${group}"; Don't change anything other than adding annotations. Return only the annotated svg code.`;
+          }
+      });
+      console.log('check annotation prompts', annotated_prompt)
+      try {
+        await generatewithAPI(annotated_prompt, (content) => saveForNew(content));
+      } catch (err) {
+        console.log('err', err)
+      }
       
     setVersions(prevVersions => {
       const updatedVersions = prevVersions.map(version => {
@@ -1455,10 +1438,11 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       });
       return updatedVersions;
     });
-    console.log('check version', versions.find(version => version.id === currentVersionId))
+    // console.log('check version', versions.find(version => version.id === currentVersionId))
   };
+}
 
-  const saveForNew =()=>{
+  const saveForNew =(content: string)=>{
     // Clone the object from currentVersion or cachedObjectsLog based on currentSelectedSVG
     const currentVersion = versions.find(version => version.id === currentVersionId);
     // const cachedObjectsLog = JSON.parse(sessionStorage.getItem('cachedobjects')) || {};
@@ -1475,7 +1459,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     const clonedObject_reuseableSVGElementList = { ...OriginalObject_reuseableSVGElementList };
     const OriginalCodeName_reuseableSVGElementList = OriginalObject_reuseableSVGElementList.codeName;
     clonedObject_reuseableSVGElementList.codeName = `${OriginalCodeName_reuseableSVGElementList}_variation`; // Append variation to original codeName
-    var updatedcontent = showLocalSvgCodeText.slice();
+    var updatedcontent = content.slice();
     // Update the cloned object with the new SVG code
       clonedObject_reuseableSVGElementList.codeText = updatedcontent;
 
@@ -1722,7 +1706,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
         </button>
 
         <button
-          onClick={saveForNew}
+          onClick={()=>saveForNew(showLocalSvgCodeText)}
           style={{
             padding: '5px 10px',
             backgroundColor: '#f0f0f0',

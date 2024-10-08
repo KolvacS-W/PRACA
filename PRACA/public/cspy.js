@@ -13,6 +13,10 @@ class CSPY {
     getClassName() {
         return this.constructor.name;
        }
+
+    static toJSON() {
+        return JSON.parse(JSON.stringify(this.prototype,null,2));
+    }
 }
 
 
@@ -29,12 +33,32 @@ class Input {
     constructor(description, defaultValue=undefined, explanation="", type="string") {
         this.description = description;
         this.explanation = explanation;
-        this.defaultValue = defaultValue;
+        this.defaultValue = Input.convert(defaultValue,type);
         this.type = type;
         this.inputtype = "Input";
 
     }
 
+    static convert(defaultValue,type) {
+        if (defaultValue) {
+            if (typeof defaultValue === 'string' || defaultValue instanceof String) {
+                if (type == 'int') {
+                    return(parseInt(defaultValue))
+                } else if (type == 'boolean') {
+                    if ((/true/i).test(defaultValue)) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else if (type == 'float') {
+                    return(parseFloat(defaultValue));
+                } else if (type == 'JSON') {
+                    return(JSON.parse(defaultValue));
+                } 
+            }
+        }
+        return(defaultValue);
+    }
     static reconstitute(inJSON) {
         return(new Input(inJSON.description,inJSON.defaultValue,inJSON.explanation,inJSON.type));
     }
@@ -52,6 +76,26 @@ class Input {
     }
 }
 
+class LLMInput extends Input {
+
+    /**
+     * 
+     * @param {string} description 
+     * @param {any} defaultValue 
+     * @param {string} explanation 
+    * @param {string} type 
+    */
+    constructor(description, explanation="", type="JSON") {
+        //console.log("STATIC INPUT",description, defaultValue, explanation, type);
+        super(description, defaultValue, explanation, type);
+        this.inputtype = "LLMInput";
+    }
+
+    execute() {
+
+    }
+
+}
 class StaticInput extends Input {
     /**
      * 
@@ -360,7 +404,7 @@ class OpenAIGen {
         }
         try {
             // try to fetch from the .key file if running in browser
-            await fetch('.key')
+            await fetch('.key.openai')
                 .then(response => response.text())
                 .then(key => {
                     OpenAIGen.apiKey = key.trim();
@@ -429,7 +473,16 @@ class OpenAIGen {
         .then((response) => response.json())
         .then((data) => {
           //console.log(data.choices[0]);
-          const genresp = data.choices[0].message.content;
+          var genresp = data.choices[0].message.content;
+          if (genresp.startsWith("```svg")) {
+            genresp = genresp.slice(6);
+          }
+          if (genresp.startsWith("```")) {
+            genresp = genresp.slice(3);
+          }
+          if (genresp.endsWith("```")) {
+            genresp = genresp.slice(0, -3);
+          }
           callback(genresp);
         });
     }
@@ -476,14 +529,210 @@ class OpenAIGen {
             });
 
             var json = await response.json();
-            genresp = data.choices[0].message.content;
+            genresp = json.choices[0].message.content;
             CSPYCompiler.log(genresp);
             messages.push({role: "assistant",content: [{ type: "text", text: genresp },],});
         }
+        if (genresp.startsWith("```svg")) {
+            genresp = genresp.slice(6);
+          }
+          if (genresp.startsWith("```")) {
+            genresp = genresp.slice(3);
+          }
+          if (genresp.endsWith("```")) {
+            genresp = genresp.slice(0, -3);
+          }
         callback(genresp);
     }
 }   
 
+class GroqGen {
+
+    // make as singleton pattern
+    static instance = undefined;
+    static apiKey = undefined;
+    static model = "llama-3.2-90b-text-preview";
+
+    /**
+     * 
+     */
+    constructor(key) {
+        if (!GroqGen.instance) {
+            GroqGen.instance = this;
+        }
+        if (key == undefined) {
+            this.loadKey();
+        } else {
+            GroqGen.apiKey = key;
+        }
+        return(GroqGen.instance);
+    }
+
+    static setModel(model) {
+        GroqGen.model = model;
+    }
+
+    async loadKey() {
+        try {
+            // Use fetch to read the file instead of require('fs')
+            GroqGen.apiKey = process.env.GROQ_CSPY_KEY;
+            if (GroqGen.apiKey) {
+                return;
+            }
+        } catch (err) {
+            // do nothing, key is not set
+        }
+        try {
+            // try to fetch from the .key file if running in browser
+            await fetch('.key.groq')
+                .then(response => response.text())
+                .then(key => {
+                    GroqGen.apiKey = key.trim();
+                    CSPYCompiler.log(GroqGen.apiKey);
+                    return;
+                })
+                .catch(err => {
+                    console.error('Error fetching API key:', err);
+                });
+             
+        } catch (err) {
+
+        }
+        CSPYCompiler.log(GroqGen.apiKey);
+    }
+
+    /**
+     * 
+     * @returns {GroqGen}
+     */
+    static getInstance() {
+        if (!GroqGen.instance) {
+            GroqGen.instance = new GroqGen();
+        }
+        return GroqGen.instance;
+    }
+
+    /**
+     * 
+     * @param {string} apiKey 
+     */
+    static setApiKey(apiKey) {
+        GroqGen.apiKey = apiKey;
+    }
+
+    /**
+     * 
+     * @param {string} prompt 
+     * @returns {string}
+     */
+    async generate(prompt,callback) {
+        if (!GroqGen.apiKey) {
+            throw new Error("GroqGen API key not set");
+        }
+        //CSPYCompiler.log("using model: " + GroqGen.model);
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+        headers: {
+                "authorization": "Bearer " + GroqGen.apiKey,
+                "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: GroqGen.model,
+          max_tokens: 1024,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+              ],
+            },
+          ],
+        }),
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          //console.log(data.choices[0]);
+          var genresp = data.choices[0].message.content;
+          if (genresp.startsWith("```svg")) {
+            genresp = genresp.slice(6);
+          }
+          if (genresp.startsWith("```javascript")) {
+            genresp = genresp.slice(13);
+          }
+          if (genresp.startsWith("```")) {
+            genresp = genresp.slice(3);
+          }
+          if (genresp.endsWith("```")) {
+            genresp = genresp.slice(0, -3);
+          }
+          callback(genresp);
+        });
+    }
+
+    /**
+     * 
+     * @param {string} prompts 
+     * @returns {string}
+     */
+    async generateMultiturn(prompts,callback) {
+        if (!GroqGen.apiKey) {
+            throw new Error("GroqGen API key not set");
+        }
+        //CSPYCompiler.log("using model: " + GroqGen.model);
+
+        var messages = [];
+        var genresp = undefined;
+
+        while (prompts.length > 0) {
+            //console.log("****",prompts);
+            var prompt = prompts.shift();
+
+            messages.push({role:"user",content:[{type:"text",text:prompt}]});
+
+            //console.log("---- PROMPTS")
+            //console.log(prompts);
+
+            //console.log("---- MESSAGES")
+            //console.log(messages);
+
+            
+
+            var response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                "authorization": "Bearer " + GroqGen.apiKey,
+                "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                model: GroqGen.model,
+                max_tokens: 2048,
+                messages: messages,
+                }),
+            });
+
+            var json = await response.json();
+            console.log(json);
+            genresp = json.choices[0].message.content;
+            CSPYCompiler.log(genresp);
+            messages.push({role: "assistant",content: genresp });
+            console.log(messages);
+        }
+        if (genresp.startsWith("```svg")) {
+            genresp = genresp.slice(6);
+          }
+          if (genresp.startsWith("```javascript")) {
+            genresp = genresp.slice(13);
+          }
+          if (genresp.startsWith("```")) {
+            genresp = genresp.slice(3);
+          }
+          if (genresp.endsWith("```")) {
+            genresp = genresp.slice(0, -3);
+          }
+        callback(genresp);
+    }
+}  
 class SVGGen {
 
     svgString = undefined;
@@ -517,8 +766,18 @@ class SVGGen {
         this.svgString = svgString;
     }
 
+
+    instToJSON() {
+        var toRet = JSON.parse(JSON.stringify(this.constructor.prototype,null,2));
+        var props = Object.getOwnPropertyNames(this);
+        props.forEach((propName) => {
+            toRet[propName] = this[propName];
+        });
+        return toRet;
+    }
+
     static toJSON() {
-        return JSON.stringify(this.prototype,null,2);
+        return JSON.parse(JSON.stringify(this.prototype,null,2));
     }
 
     getClassName() {
@@ -563,7 +822,8 @@ class CSPYCompiler {
                     } else {
                         //console.log(name,idx,propValues[idx]);
                         this[name] = propValues[idx];
-                        this.inputs[name].defaultValue = propValues[idx];
+                        var tp = this.inputs[name];
+                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
                     }
                 });
             }
@@ -617,6 +877,10 @@ class CSPYCompiler {
                     var genresp = await OpenAIGen.getInstance().generate(prompt, (resp) => {
                         this.setSVG(resp);
                     });
+                } else if (this.llm == "Groq") {
+                    var genresp = await GroqGen.getInstance().generate(prompt, (resp) => {
+                        this.setSVG(resp);
+                    });
                 } else {
                     var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                         this.setSVG(resp);
@@ -634,7 +898,7 @@ class CSPYCompiler {
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = propValues[idx];
+                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
                     idx++;
@@ -668,7 +932,8 @@ class CSPYCompiler {
                     } else {
                         //console.log(name,idx,propValues[idx]);
                         this[name] = propValues[idx];
-                        this.inputs[name].defaultValue = propValues[idx];
+                        var tp = this.inputs[name];
+                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
                     }
                 });
             }
@@ -741,6 +1006,10 @@ class CSPYCompiler {
                     var genresp = await OpenAIGen.getInstance().generate(prompt, (resp) => {
                         this.setTemplate(resp);
                     });
+                } else if (this.llm == "Groq") {
+                    var genresp = await GroqGen.getInstance().generate(prompt, (resp) => {
+                        this.setTemplate(resp);
+                    });
                 } else {
                     var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
                         this.setTemplate(resp);
@@ -786,7 +1055,7 @@ class CSPYCompiler {
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = propValues[idx];
+                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
                     idx++;
@@ -817,7 +1086,8 @@ class CSPYCompiler {
                     } else {
                         //console.log(name,idx,propValues[idx]);
                         this[name] = propValues[idx];
-                        this.inputs[name].defaultValue = propValues[idx];
+                        var tp = this.inputs[name];
+                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
                     }
                 });
             }
@@ -866,7 +1136,7 @@ class CSPYCompiler {
                     }
                    });
                 
-                console.log('code compiler prompt', p1, p2)
+                    
                 this.svgString = "";
         
                 //CSPYCompiler.log(prompt);
@@ -874,6 +1144,10 @@ class CSPYCompiler {
                 CSPYCompiler.log(p2);
                 if (this.llm == 'OpenAI') {
                     var genresp = await OpenAIGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                        this.setTemplate(resp);
+                        });
+                } else if (this.llm == 'Groq') {
+                    var genresp = await GroqGen.getInstance().generateMultiturn([p1,p2], (resp) => {
                         this.setTemplate(resp);
                         });
                 } else {
@@ -911,7 +1185,8 @@ class CSPYCompiler {
                 // eval the string and set
                 CSPYCompiler.log(templateString);
                 var func = eval("var fillTemplateInternal="+templateString+"\nfillTemplateInternal;");
-                Object.getPrototypeOf(this).fillTemplateInternal = func;
+                this.fillTemplateInternal = func;
+                this.javascriptString = templateString;
                 //CSPYCompiler.log(func);
                 this.fillTemplate();
             }
@@ -926,7 +1201,7 @@ class CSPYCompiler {
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = propValues[idx];
+                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
                     idx++;

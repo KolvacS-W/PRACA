@@ -144,6 +144,7 @@ const App: React.FC = () => {
               </select>
             </div>
               <ClassEditor 
+                llm ={llm}
                 api_key={api_key}
                 currentVersionId={currentVersionId}
                 versions={versions}
@@ -156,6 +157,7 @@ const App: React.FC = () => {
   
             <div className="code-editor-container">
               <CustomCodeEditor
+                llm ={llm}
                 classcode={classcode}
                 setClassCode={setClassCode}
                 api_key={api_key}

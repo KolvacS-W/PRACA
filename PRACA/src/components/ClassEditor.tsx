@@ -3,6 +3,7 @@ import CodeEditor from '@uiw/react-textarea-code-editor';
 import { Version } from '../types';
 
 interface ClassEditorProps {
+  llm: string;
   api_key: string;
   currentVersionId: string | null;
   setVersions: React.Dispatch<React.SetStateAction<Version[]>>;
@@ -15,6 +16,7 @@ interface ClassEditorProps {
 }
 
 const ClassEditor: React.FC<ClassEditorProps> = ({
+  llm,
   api_key,
   currentVersionId,
   versions,
@@ -219,44 +221,116 @@ const editorRef = useRef<HTMLTextAreaElement>(null);
   };
 
   const generatewithAPI = async (prompt: string, callback: (response: string) => void) => {
-  
-    try {
-      if (!api_key) {
-        throw new Error("AnthropicGen API key not set");
+    if(llm == 'Anthropic'){
+      try {
+        if (!api_key) {
+          throw new Error("AnthropicGen API key not set");
+        }
+    
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: {
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+            "content-type": "application/json",
+            "anthropic-dangerous-direct-browser-access": "true", 
+          },
+          body: JSON.stringify({
+            model: "claude-3-haiku-20240307",
+            max_tokens: 1024,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "text", text: prompt },
+                ],
+              },
+            ],
+          }),
+        });
+    
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+    
+        const data = await response.json();
+        const genresp = data.content[0].text;
+        callback(genresp);
+      } catch (err) {
+        console.error('Error in generatewithAPI:', err);
       }
-  
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "x-api-key": api_key,
-          "anthropic-version": "2023-06-01",
-          "content-type": "application/json",
-          "anthropic-dangerous-direct-browser-access": "true", 
-        },
-        body: JSON.stringify({
-          model: "claude-3-haiku-20240307",
-          max_tokens: 1024,
-          messages: [
-            {
-              role: "user",
-              content: [
-                { type: "text", text: prompt },
-              ],
-            },
-          ],
-        }),
-      });
-  
+    }
+    else if (llm == 'OpenAI') {
+      try {
+        if (!api_key) {
+          throw new Error("AnthropicGen API key not set");
+        }
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+      headers: {
+              "authorization": "Bearer " + api_key,
+              "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+            ],
+          },
+        ],
+      }),
+      })
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-  
       const data = await response.json();
-      const genresp = data.content[0].text;
-      callback(genresp);
-    } catch (err) {
-      console.error('Error in generatewithAPI:', err);
+      const genresp = data.choices[0].message.content;
+        callback(genresp);
+      } catch (err) {
+        console.error('Error in generatewithAPI:', err);
+      }
     }
+    else if (llm == 'Groq'){
+      try {
+        if (!api_key) {
+          throw new Error("AnthropicGen API key not set");
+        }
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+      headers: {
+              "authorization": "Bearer " + api_key,
+              "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "llama-3.2-90b-text-preview",
+        max_tokens: 1024,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+            ],
+          },
+        ],
+      }),
+    })
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const genresp = data.choices[0].message.content;
+    callback(genresp);
+      } catch (err) {
+        console.error('Error in generatewithAPI:', err);
+      }
+
+    }
+  
   };
 
   const handleResponse = (content: string, levelIndex: number) => {

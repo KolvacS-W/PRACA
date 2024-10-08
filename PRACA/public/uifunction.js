@@ -1,25 +1,63 @@
-
+//functions to set llm and apikey
 async function initialize_LLM() {
-window.parent.postMessage({
-    type: 'GET_LLM_KEY'
-}, '*');
-    await new Promise((resolve) => {
-    const messageHandler = (event) => {
-        if (event.data && event.data.type === 'RETURN_LLM_KEY') {
-            console.log('Received RETURN_LLM_KEY:', event.data.api_key, event.data.llm);
-            // Resolve the promise with the received data
-            let llm = event.data.llm
-            let api_key = event.data.api_key
-            resolve();
-            // Remove the event listener once the data is received
-            window.removeEventListener('message', messageHandler);
-        }
-    };
-    // Start listening for the RETURN_AnnotatedPieceList event
-    // console.log('Waiting for RETURN_AnnotatedPieceList event...');
-    window.addEventListener('message', messageHandler);
-});
+    // Send message to parent window to request the LLM key
+    window.parent.postMessage({
+        type: 'GET_LLM_KEY'
+    }, '*');
+
+    // Wait for the response and return the received data
+    const result = await new Promise((resolve) => {
+        const messageHandler = (event) => {
+            if (event.data && event.data.type === 'RETURN_LLM_KEY') {
+                console.log('Received RETURN_LLM_KEY:', event.data.api_key, event.data.llm);
+                // Remove the event listener once the data is received
+                window.removeEventListener('message', messageHandler);
+                // Resolve the promise with an object containing both values
+                resolve({
+                    llm: event.data.llm,
+                    api_key: event.data.api_key
+                });
+            }
+        };
+        // Add the event listener to wait for the response
+        window.addEventListener('message', messageHandler);
+    });
+
+    // Return the result (an object containing llm and api_key)
+    return result;
 }
+
+let llm, api_key; // Declare variables in a wider scope
+
+async function initializeAndSetApiKey() {
+
+    // Call the initialize_LLM function and handle the returned values
+    await initialize_LLM().then((result) => {
+        llm = result.llm;
+        api_key = result.api_key;
+
+        // Set the API key based on the LLM value
+        switch (llm) {
+            case 'Anthropic':
+                AnthropicGen.setApiKey(api_key);
+                break;
+            case 'OpenAI':
+                OpenAIGen.setApiKey(api_key);
+                break;
+            case 'Groq':
+                GroqGen.setApiKey(api_key);
+                break;
+            default:
+                console.error(`Unknown LLM: ${llm}`);
+        }
+    });
+
+    // Optionally return the values if needed elsewhere
+    return { llm, api_key };
+}
+
+window.initializeAndSetApiKey = initializeAndSetApiKey;
+
 document.addEventListener('click', function(event) {
     const rect = document.body.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 100;

@@ -1,14 +1,11 @@
-var apiKey = ''
+await initializeAndSetApiKey().then(({ llm, api_key }) => {
+    console.log('set llm and key', llm, api_key)
+});
 
-await initialize_LLM();
-
-console.log('llm and key', llm, api_key, window.llm, window.api_key)
 setBackground('lightblue')
 
-const ag = new AnthropicGen(apiKey);
-// await ag.loadKey();
 
-var simple = CSPYCompiler.compile(SimpleHouse,"prompt");
+var simple = CSPYCompiler.compile(SimpleHouse,"prompt",llm);
 
 console.log('A')
 var inst1 = new simple("red","square");

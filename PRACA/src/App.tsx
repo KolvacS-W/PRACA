@@ -7,7 +7,7 @@ import './App.css';
 
 const App: React.FC = () => {
   const [api_key, setApiKey] = useState('')
-  const [llm, setLlm] = useState('')
+  const [llm, setLlm] = useState('Anthropic')
   const [versions, setVersions] = useState<Version[]>([]);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [classcode, setClassCode] = useState<{ js: string }>({

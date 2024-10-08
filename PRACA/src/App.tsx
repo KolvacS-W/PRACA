@@ -6,7 +6,8 @@ import {Version} from './types'
 import './App.css';
 
 const App: React.FC = () => {
-  const api_key = ''
+  const [api_key, setApiKey] = useState('')
+  const [llm, setLlm] = useState('')
   const [versions, setVersions] = useState<Version[]>([]);
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   const [classcode, setClassCode] = useState<{ js: string }>({
@@ -14,7 +15,6 @@ const App: React.FC = () => {
   });
   const [usercode, setUserCode] = useState<{ js: string }>({ js: '' });   // Initialize usercode
   const iframeRef = useRef<HTMLIFrameElement>(null);
-
   const handleRunClassCode = () => {
     console.log('posting msg EXECUTE_CLASSCODE')
     if (iframeRef.current?.contentWindow) {
@@ -49,6 +49,17 @@ const App: React.FC = () => {
       );
     }
     console.log('posted EXECUTE_USERCODE')
+  };
+
+  const updateAPIKey = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('set key')
+    setApiKey(event.target.value);
+  };
+
+  const onLLMChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    // Implement the logic for changing LLM
+    console.log('set llm')
+    setLlm(event.target.value)
   };
 
   useEffect(() => {
@@ -112,70 +123,66 @@ const App: React.FC = () => {
       <div className="editor-section">
         {currentVersionId !== null && versions.find(version => version.id === currentVersionId) && (
           <>
-            {/* Replace DescriptionEditor with ClassEditor */}
+  
             <div className="class-editor-container">
-              <ClassEditor 
-              api_key = {api_key}
-              currentVersionId={currentVersionId}
-              versions={versions}
-              setVersions={setVersions}
-              classcode={classcode} 
-              setClassCode={setClassCode}
-              onRunClassCode={handleRunClassCode} // Pass the handler
-               />
-            </div>
-            <div className="code-editor-container">
-            <CustomCodeEditor
-              classcode = {classcode}
-              setClassCode = {setClassCode}
-              api_key = {api_key}
-              usercode={versions.find(version => version.id === currentVersionId)!.usercode}
-              currentVersionId={currentVersionId}
-              versions={versions}
-              setVersions={setVersions}
-              onRunUserCode={handleRunUserCode} // Pass the handler
+                          {/* Make this section small and place it on top of ClassEditor */}
+            <div className="header-container">
+              <h1 className="small-title">Generator</h1>
+              <label htmlFor="api-key" className="small-label">API Key:</label>
+              <input 
+                type="text" 
+                id="api-key" 
+                name="api-key" 
+                value={api_key} 
+                onChange={updateAPIKey}
+                className="small-input"
               />
-              </div>
+              <select id="llm" name="llm" onChange={onLLMChange} className="small-select">
+                <option value="Anthropic">Anthropic</option>
+                <option value="OpenAI">OpenAI</option>
+                <option value="Groq">Groq</option>
+              </select>
+            </div>
+              <ClassEditor 
+                api_key={api_key}
+                currentVersionId={currentVersionId}
+                versions={versions}
+                setVersions={setVersions}
+                classcode={classcode} 
+                setClassCode={setClassCode}
+                onRunClassCode={handleRunClassCode} // Pass the handler
+              />
+            </div>
+  
+            <div className="code-editor-container">
+              <CustomCodeEditor
+                classcode={classcode}
+                setClassCode={setClassCode}
+                api_key={api_key}
+                usercode={versions.find(version => version.id === currentVersionId)!.usercode}
+                currentVersionId={currentVersionId}
+                versions={versions}
+                setVersions={setVersions}
+                onRunUserCode={handleRunUserCode} // Pass the handler
+              />
+            </div>
+  
             <ResultViewer  
-            usercode={versions.find(version => version.id === currentVersionId)!.usercode}
-            classcode={classcode} // Pass classcode to ResultViewer 
-            currentVersionId={currentVersionId}
-            versions={versions}
-            setVersions={setVersions}
-            iframeRef={iframeRef}
-            />
-            {/* <ReusableElementToolbar
+              usercode={versions.find(version => version.id === currentVersionId)!.usercode}
+              api_key = {api_key}
+              llm = {llm}
+              classcode={classcode} // Pass classcode to ResultViewer 
               currentVersionId={currentVersionId}
               versions={versions}
               setVersions={setVersions}
-              hoveredElement={hoveredElement}
-              setHoveredElement={setHoveredElement}
-            /> */}
+              iframeRef={iframeRef}
+            />
           </>
         )}
       </div>
-      {/* <div className="version-controls">
-        <button className="test-button" onClick={createTestVersion}>Test</button>
-        <button className="purple-button" onClick={saveCurrentVersion}>Save</button>
-        <button className="green-button" onClick={createNewVersion}>New</button>
-        <button className="green-button" onClick={copyCurrentVersion}>Copy</button>
-        {currentVersionId !== null && (
-          <button className="delete-button" onClick={() => deleteVersion(currentVersionId)}>Delete</button>
-        )}
-        <div className="version-buttons">
-          {versions.map((version) => (
-            <button
-              key={version.id}
-              className={`version-button ${currentVersionId === version.id ? 'selected' : ''}`}
-              onClick={() => switchToVersion(version.id)}
-            >
-              {version.id}
-            </button>
-          ))}
-        </div>
-      </div> */}
     </div>
   );
+  
 }
   
 export default App;

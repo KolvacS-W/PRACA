@@ -1,3 +1,25 @@
+
+async function initialize_LLM() {
+window.parent.postMessage({
+    type: 'GET_LLM_KEY'
+}, '*');
+    await new Promise((resolve) => {
+    const messageHandler = (event) => {
+        if (event.data && event.data.type === 'RETURN_LLM_KEY') {
+            console.log('Received RETURN_LLM_KEY:', event.data.api_key, event.data.llm);
+            // Resolve the promise with the received data
+            let llm = event.data.llm
+            let api_key = event.data.api_key
+            resolve();
+            // Remove the event listener once the data is received
+            window.removeEventListener('message', messageHandler);
+        }
+    };
+    // Start listening for the RETURN_AnnotatedPieceList event
+    // console.log('Waiting for RETURN_AnnotatedPieceList event...');
+    window.addEventListener('message', messageHandler);
+});
+}
 document.addEventListener('click', function(event) {
     const rect = document.body.getBoundingClientRect();
     const x = ((event.clientX - rect.left) / rect.width) * 100;
@@ -62,6 +84,23 @@ if (!window.whole_canvas) {
             }
             canvasContainer.style.backgroundColor = canvas_color;
             return canvasContainer;
+        }
+        // Method to get the full HTML including the canvas contents
+        get_full_html() {
+            // Clone the canvasContainer element to avoid modifying the actual DOM
+            const clonedCanvasContainer = this.canvasContainer.cloneNode(true);
+    
+            // Serialize the cloned canvasContainer's content
+            const serializer = new XMLSerializer();
+            const canvasContent = serializer.serializeToString(clonedCanvasContainer);
+    
+            // Insert the canvas content into the backend HTML string
+            const finalHtml = this.backendhtmlString.replace(
+                '<div id="canvasContainer"></div>',
+                canvasContent
+            );
+    
+            return finalHtml;
         }
     }
     window.whole_canvas = whole_canvas;
@@ -150,7 +189,10 @@ function placeSvg(svgstring, canvas, coord = {
 
     // Append the SVG element to the canvas container
     canvas.canvasContainer.appendChild(svgElement);
-
+    window.parent.postMessage({
+        type: 'UPDATE_CANVASHTML',
+        content: window.canvas.get_full_html()
+    }, '*');
     // Execute the script content manually, if any
     if (scriptContent) {
         try {
@@ -159,6 +201,7 @@ function placeSvg(svgstring, canvas, coord = {
             console.error('Error executing SVG script:', e);
         }
     }
+    
 }
 
 

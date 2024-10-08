@@ -1,3 +1,4 @@
+
 // Function to dynamically load an external script
 function loadScript(src, callback) {
     const existingScript = document.querySelector(`script[src="${src}"]`);

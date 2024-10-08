@@ -1,5 +1,8 @@
 var apiKey = ''
 
+await initialize_LLM();
+
+console.log('llm and key', llm, api_key, window.llm, window.api_key)
 setBackground('lightblue')
 
 const ag = new AnthropicGen(apiKey);

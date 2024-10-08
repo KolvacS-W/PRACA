@@ -398,3 +398,36 @@ textarea {
   outline: 2px solid red;
   outline-offset: 5px;
 } */
+.header-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  padding: 5px;
+  border-bottom: 1px solid #ccc;
+}
+
+.small-title {
+  font-size: 16px; /* Smaller font size */
+  margin-right: 10px;
+}
+
+.small-label {
+  font-size: 14px; /* Smaller font size */
+  margin-right: 5px;
+}
+
+.small-input {
+  font-size: 12px; /* Smaller font size */
+  padding: 3px;
+  margin-right: 10px;
+}
+
+.small-select {
+  font-size: 12px; /* Smaller font size */
+  padding: 3px;
+}
+
+.class-editor-container {
+  margin-top: 20px; /* Add margin to separate ClassEditor from header */
+}

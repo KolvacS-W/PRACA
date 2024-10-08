@@ -8,6 +8,8 @@ interface ResultViewerProps {
   classcode: {
     js: string;
   };
+  api_key: string;
+  llm: string;
   iframeRef: React.RefObject<HTMLIFrameElement>;
   currentVersionId: string | null;
   setVersions: React.Dispatch<React.SetStateAction<Version[]>>;
@@ -15,12 +17,14 @@ interface ResultViewerProps {
 }
 
 
-const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersions, versions, iframeRef}) => {
+const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersions, versions, iframeRef, api_key, llm}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   // var currentreuseableSVGElementList = versions.find(version => version.id === currentVersionId)?.reuseableSVGElementList;
   //console.log('check svglist', currentreuseableSVGElementList)
   const [clickCoordinates, setClickCoordinates] = useState<{ x: number; y: number } | null>(null);
   const versionsRef = useRef(versions); // Create a ref for versions
+  const [canvashtml, setCanvasHtml] = useState(''); //for final html of the canvas
+  const [notification, setNotification] = useState<string | null>(null); // Notification for copying
 
   useEffect(() => {
     versionsRef.current = versions; // Update the ref whenever versions change
@@ -28,7 +32,7 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
 
 
   useEffect(() => {
-    console.log('useeffect for coordinate click')
+    console.log('useeffect for coordinate click,' )
     // Clear sessionStorage on app refresh
     // window.addEventListener('beforeunload', clearSessionStorage);
 
@@ -54,6 +58,48 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
     };
   }, []);
   
+  useEffect(() => {
+    console.log('useeffect for llm key', llm, api_key)
+    const handleIframeMessage = (event: MessageEvent) => {
+  
+      if (event.data.type === 'GET_LLM_KEY') {
+        console.log('GET_SVGPIECELIST returning', llm, api_key)
+  
+          iframeRef.current.contentWindow.postMessage(
+            {
+              type: 'RETURN_LLM_KEY',
+              llm: llm,
+              api_key: api_key
+            },
+            '*'
+          );
+  
+      }
+      
+  
+      // if (event.data.type === 'GET_AnnotatedPieceList') {
+      //   console.log('GET_AnnotatedPieceList returning??', versionsRef.current.find(version => version.id === currentVersionId))
+      //   const currentAnnotatedPieceList = versionsRef.current.find(version => version.id === currentVersionId)?.AnnotatedPieceList;
+      //   if (currentAnnotatedPieceList) {
+      //     iframeRef.current.contentWindow.postMessage(
+      //       {
+      //         type: 'RETURN_AnnotatedPieceList',
+      //         currentAnnotatedPieceList: currentAnnotatedPieceList,
+      //       },
+      //       '*'
+      //     );
+      //     console.log('GET_AnnotatedPieceList returned')
+      //   }
+      // }
+    };
+
+    window.addEventListener('message', handleIframeMessage);
+    
+    return () => {
+      window.removeEventListener('message', handleIframeMessage);
+    };
+
+  }, [llm, api_key]);
 
   const handleIframeLoad = () => {
     console.log('handleIframeLoad called')
@@ -222,6 +268,12 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
         return updatedVersions;
       });
     }
+
+    if (event.data.type === 'UPDATE_CANVASHTML') {
+      // console.log('get UPDATE_CANVASHTML:', event.data.content);
+      setCanvasHtml(event.data.content)
+    }
+
     
 
     // if (event.data.type === 'GET_AnnotatedPieceList') {
@@ -317,16 +369,73 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
       window.removeEventListener('message', handleIframeMessage);
     };
   }
+
+  const handleCopy = () => {
+    if (canvashtml) {
+      navigator.clipboard.writeText(canvashtml)
+        .then(() => {
+          setNotification('Copied to clipboard!');
+          setTimeout(() => setNotification(null), 2000); // Hide notification after 2 seconds
+        })
+        .catch(err => {
+          setNotification('Failed to copy.');
+          setTimeout(() => setNotification(null), 2000);
+          console.error('Could not copy text: ', err);
+        });
+    }
+  };
+
   return (
-    <div ref={containerRef} className="result-viewer" >
-      <iframe ref={iframeRef} 
-      title="Result Viewer" 
-      style={{ width: '100%', height: '100%' }} 
-      sandbox="allow-scripts allow-same-origin" // Add allow-same-origin
-      onLoad={handleIframeLoad} // Attach the onLoad handler
+    <div ref={containerRef} className="result-viewer" style={{ position: 'relative' }}>
+      {/* Copy button at the top right */}
+      <button
+        onClick={handleCopy}
+        style={{
+          position: 'absolute',
+          top: '10px',
+          right: '10px',
+          zIndex: 10,
+          padding: '5px 10px',
+          backgroundColor: '#f0f0f0',
+          border: '1px solid #ccc',
+          borderRadius: '4px',
+          cursor: 'pointer',
+        }}
+      >
+        Copy
+      </button>
+
+      {/* Notification */}
+      {notification && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '40px',
+            right: '10px',
+            backgroundColor: '#000',
+            color: '#fff',
+            padding: '5px 10px',
+            borderRadius: '4px',
+            zIndex: 10,
+            fontSize: '12px',
+            opacity: 0.9
+          }}
+        >
+          {notification}
+        </div>
+      )}
+
+      {/* Iframe */}
+      <iframe
+        ref={iframeRef}
+        title="Result Viewer"
+        style={{ width: '100%', height: '100%' }}
+        sandbox="allow-scripts allow-same-origin" // Add allow-same-origin
+        onLoad={handleIframeLoad} // Attach the onLoad handler
       />
     </div>
   );
 };
+
 
 export default ResultViewer;

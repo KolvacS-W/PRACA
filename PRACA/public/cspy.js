@@ -76,7 +76,41 @@ class Input {
     }
 }
 
-class LLMInput extends Input {
+class ComputedInput extends Input {
+    constructor(description, defaultValue=undefined, explanation="", type="string") {
+        super(description, defaultValue, explanation, type);
+        this.inputtype = "ComputedInput";
+    }
+
+    compute() {
+        //
+    }
+}
+
+
+class RandomChoiceInput extends ComputedInput {
+    /**
+     * 
+     * @param {string} description 
+     * @param {array} choices
+     * @param {string} type
+     */
+    constructor(description, choices=[], type="string") {
+        super(description,undefined,"",type);
+        this.choices = choices;
+        this.inputtype = "RandomChoiceInput";
+    }
+
+
+    compute() {
+        if (this.choices.length == 0) {
+            return undefined;
+        }
+        this.defaultValue = Input.convert(this.choices[(Math.floor(Math.random() * this.choices.length))]);
+    }
+}
+
+class LLMInput extends ComputedInput {
 
     /**
      * 
@@ -94,8 +128,9 @@ class LLMInput extends Input {
     execute() {
 
     }
-
 }
+
+
 class StaticInput extends Input {
     /**
      * 
@@ -115,6 +150,9 @@ class StaticInput extends Input {
         return(new StaticInput(inJSON.description,inJSON.defaultValue,inJSON.explanation,inJSON.type));
     }
 }
+
+
+
 
 class ContextInput extends Input {
 
@@ -139,39 +177,6 @@ class ContextInput extends Input {
     }
 }
 
-
-class RandomChoiceInput extends Input {
-    /**
-     * 
-     * @param {string} description 
-     * @param {array} choices
-     * @param {string} type
-     */
-    constructor(description, choices=[], type="string") {
-        this.description = description;
-        this.choices = choices;
-        this.type = type;
-        this.inputtype = "RandomChoiceInput";
-    }
-
-    /**
-     * 
-     * @returns {string}
-     */
-    toString() {
-        return `${this.description}: ${this.choices} (${this.type})`;
-    }
-
-    /**
-     * 
-     */
-    pickOne() {
-        if (this.choices.length == 0) {
-            return undefined;
-        }
-        return this.choices[(Math.floor(Math.random() * this.choices.length))];
-    }
-}
 
 // demo script for command line usage
 //const input = new Input("name", "the name of the house", "John Doe", "string");
@@ -854,6 +859,9 @@ class CSPYCompiler {
                             contextPromptString = "";
                         }
                         contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
+                    } else if (tProp instanceof ComputedInput) {
+                        tProp.compute();
+                        propPromptString += `The ${prop} should be ${tProp.defaultValue}\n`;
                     } else {
                         CSPYCompiler.log(prop,typeof tProp);
                     }
@@ -988,7 +996,10 @@ class CSPYCompiler {
                             contextPromptString = "";
                         }
                         contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
-                    }
+                    } else if (tProp instanceof ComputedInput) {
+                        //tProp.compute();
+                        prompt += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                    } 
                    });
                 
                 CSPYCompiler.log(this.inputs);
@@ -1037,6 +1048,9 @@ class CSPYCompiler {
                   const tvals = {};
                   props.forEach((prop) => {
                     var tProp = this.inputs[prop];
+                    if (tProp instanceof ComputedInput) {
+                        tProp.compute();
+                    } 
                     //console.log(prop,tProp.defaultValue);
                     tvals[prop] = tProp.defaultValue;
                   });
@@ -1133,6 +1147,9 @@ class CSPYCompiler {
                             contextPromptString = "";
                         }
                         contextPromptString += `\n\nUse the following SVG as a starting point:\n ${tProp.defaultValue}\n`;
+                    } else if (tProp instanceof ComputedInput) {
+                        p1 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                        p2 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
                     }
                    });
                 
@@ -1170,6 +1187,11 @@ class CSPYCompiler {
                     }
                     
                     if (tProp instanceof StaticInput) {
+                        tVals[prop] = tProp.defaultValue;
+                    }
+
+                    if (tProp instanceof ComputedInput) {
+                        tProp.compute();
                         tVals[prop] = tProp.defaultValue;
                     }
                 });

@@ -149,7 +149,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
           setOptionLevels([]);
           setShowAutocomplete(false);
           setShowGenerateOption(false);
-          // setShowCoordcomplete(false);
+          setShowCoordcomplete(false);
           // setShowModifyObjWidget(false);
           setVersions(prevVersions => {
             const updatedVersions = prevVersions.map(version => {
@@ -176,6 +176,25 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     };
   }, []);
 
+  const handleDoubleClick = (event: React.MouseEvent) => {
+    const selection = window.getSelection();
+    const word = selection?.toString().trim();
+
+    const currentVersion = versions.find(version => version.id === currentVersionId);
+    if (!currentVersion) {
+      console.log('No current version found');
+      return;
+    }
+
+    if (word == 'coord'){
+      setHintKeywords(word);
+      const cursorPosition = editorRef.current?.selectionStart || 0;
+      const position = getCaretCoordinates(editorRef.current, cursorPosition - word.length);
+      setCoordcompletePosition({ top: position.top + 50, left: position.left });
+      setShowCoordcomplete(true);
+    }
+
+  };
 
 //auto completion widgets
   const handleRightClick = (event: React.MouseEvent) => {
@@ -400,6 +419,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     const textAfterCursor = currentValue.slice(cursorPosition + hintText.length);
     const newText = textBeforeCursor + option + textAfterCursor;
     setuserJs(newText);
+    setShowCoordcomplete(false);
     setShowAutocomplete(false);
     setGeneratedOptions([]);
   };
@@ -1424,8 +1444,8 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
       className="modify-obj-widget"
       style={{
         position: 'absolute',
-        top: 450,
-        left: 820,
+        top: 550,
+        left: 840,
         zIndex: 1000,
         backgroundColor: 'white',
         border: '1px solid #ccc',
@@ -1836,7 +1856,7 @@ const CustomCodeEditor: React.FC<CodeEditorProps> = ({
     <div
       ref={codecomponentRef}
       className="code-editor"
-      // onDoubleClick={handleDoubleClick}
+      onDoubleClick={handleDoubleClick}
       onContextMenu={handleRightClick}
     >
       {loading && <div className="loading-container"><ReactLoading type="spin" color="#007bff" height={50} width={50} /></div>}

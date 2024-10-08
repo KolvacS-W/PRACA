@@ -238,3 +238,91 @@ function divideCanvasIntoBlocks(canvasWidth = 100, canvasHeight = 100, numBlocks
   // Call the async function
   placeObjects().catch(error => console.error('Error:', error));
   
+  ===
+
+  await initializeAndSetApiKey().then(({ llm, api_key }) => {
+    console.log('set llm and key', llm, api_key)
+});
+
+function divideCanvasIntoBlocks(canvasWidth = 100, canvasHeight = 100, numBlocks = 7) {
+    // Create arrays to store the x and y coordinates of the dividing lines
+    let xLines = [0, canvasWidth];
+    let yLines = [0, canvasHeight];
+  
+    // Generate random dividing lines
+    for (let i = 0; i < numBlocks - 2; i++) {
+      if (i % 2 === 0) {
+        xLines.push(Math.floor(Math.random() * canvasWidth));
+      } else {
+        yLines.push(Math.floor(Math.random() * canvasHeight));
+      }
+    }
+  
+    // Sort the lines
+    xLines.sort((a, b) => a - b);
+    yLines.sort((a, b) => a - b);
+  
+    // Generate blocks with four corner coordinates
+    let blocks = [];
+    for (let i = 0; i < xLines.length - 1; i++) {
+      for (let j = 0; j < yLines.length - 1; j++) {
+        blocks.push({
+          topLeft: { x: xLines[i], y: yLines[j] },
+          topRight: { x: xLines[i+1], y: yLines[j] },
+          bottomLeft: { x: xLines[i], y: yLines[j+1] },
+          bottomRight: { x: xLines[i+1], y: yLines[j+1] }
+        });
+      }
+    }
+  
+    // Convert block coordinates to the requested format (0-100 range)
+    let coordinates = blocks.map(block => ({
+      topLeft: { 
+        x: Math.floor(block.topLeft.x / canvasWidth * 100),
+        y: Math.floor(block.topLeft.y / canvasHeight * 100)
+      },
+      topRight: { 
+        x: Math.floor(block.topRight.x / canvasWidth * 100),
+        y: Math.floor(block.topRight.y / canvasHeight * 100)
+      },
+      bottomLeft: { 
+        x: Math.floor(block.bottomLeft.x / canvasWidth * 100),
+        y: Math.floor(block.bottomLeft.y / canvasHeight * 100)
+      },
+      bottomRight: { 
+        x: Math.floor(block.bottomRight.x / canvasWidth * 100),
+        y: Math.floor(block.bottomRight.y / canvasHeight * 100)
+      }
+    }));
+  
+    return coordinates;
+  }
+  
+  // Usage
+  let blockCoordinates = divideCanvasIntoBlocks();
+  
+setBackground('lightblue')
+
+  // Wrap the asynchronous operations in an async function
+  async function placeObjects() {
+    // Generate an object with specific parameter values
+var simpletree = CSPYCompiler.compile(SimpleTree,"code",llm);
+
+var inst1 = new simpletree("orange",30, 5);
+console.log('B')
+
+var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString, 'firsttree'));
+    
+    for (let idx = 0; idx < blockCoordinates.length; idx++) {
+      const block = blockCoordinates[idx];
+        var inst2 = inst1.update("green",80, 8)
+  var svg2 =await inst2.getSVG((svgString) => saveSVG(svgString));
+      
+      renderSvg(svg2, null, 1, block.topLeft, block.topRight, block.bottomLeft, block.bottomRight);
+    }
+  
+  }
+  
+  // Call the async function
+  placeObjects().catch(error => console.error('Error:', error));
+  

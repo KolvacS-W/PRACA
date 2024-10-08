@@ -99,8 +99,8 @@ if (!window.whole_canvas) {
                                           }
                                           #canvasContainer {
                                               position: relative;
-                                              width: 100%;
-                                              height: 100%;
+                                              width: 500px;
+                                              height: 500px;
                                               background-color: ${canvas_color};
                                           }
                                       </style>
@@ -115,14 +115,21 @@ if (!window.whole_canvas) {
             this.drawQueue = Promise.resolve();
         }
         create_canvas(canvas_color) {
+            console.log('document', document);
             const canvasContainer = document.getElementById('canvasContainer');
+            
             // Clear all contents of canvasContainer
             while (canvasContainer.firstChild) {
                 canvasContainer.removeChild(canvasContainer.firstChild);
             }
+            
+            // Set the background color of the canvasContainer
             canvasContainer.style.backgroundColor = canvas_color;
+            
+            console.log('create canvas', document);
             return canvasContainer;
         }
+        
         // Method to get the full HTML including the canvas contents
         get_full_html() {
             // Clone the canvasContainer element to avoid modifying the actual DOM
@@ -187,6 +194,9 @@ function placeSvg(svgstring, canvas, coord = {
 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
     const content = sanitize_removeattributes(svgstring);
 
+    console.log('before:', svgstring)
+    console.log('after:', content)
+
     // Create a DOMParser to parse the SVG content
     const parser = new DOMParser();
     const svgDoc = parser.parseFromString(content, 'image/svg+xml');
@@ -226,6 +236,8 @@ function placeSvg(svgstring, canvas, coord = {
     );
 
     // Append the SVG element to the canvas container
+    // canvas.canvasContainer.canvasSvg.appendChild(svgElement);
+
     canvas.canvasContainer.appendChild(svgElement);
     window.parent.postMessage({
         type: 'UPDATE_CANVASHTML',

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Version} from '../types';
+import '../App.css';
 
 interface ResultViewerProps {
   usercode: {
@@ -348,6 +349,11 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
                     width: 100%;
                     height: 100%;
                   }
+
+                  #canvasSvg {
+                    width: 100%;
+                    height: 100%;
+                  }
                 </style>
               <body>
                   <div id="canvasContainer"></div>
@@ -386,7 +392,18 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
   };
 
   return (
-    <div ref={containerRef} className="result-viewer" style={{ position: 'relative' }}>
+    <div
+    ref={containerRef}
+    className="result-viewer-div"
+    style={{
+      position: 'relative',
+      width: '500px',
+      height: '500px',
+      backgroundColor: 'white', // Corrected color format
+      borderRadius: '10px', // Units should be strings
+      boxShadow: '0 0 10px rgba(0, 0, 0, 0.1)' // Corrected boxShadow
+    }}
+  >
       {/* Copy button at the top right */}
       <button
         onClick={handleCopy}
@@ -428,8 +445,8 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
       {/* Iframe */}
       <iframe
         ref={iframeRef}
-        title="Result Viewer"
-        style={{ width: '100%', height: '100%' }}
+        title="result-viewer iframe"
+        style={{ width: '100%', height: '100%', backgroundColor: 'white' }}
         sandbox="allow-scripts allow-same-origin" // Add allow-same-origin
         onLoad={handleIframeLoad} // Attach the onLoad handler
       />

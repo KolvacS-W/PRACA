@@ -96,7 +96,7 @@ iframe {
   margin-top: 10px;
 }
 
-.result-viewer {
+/* .result-viewer {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -114,7 +114,7 @@ iframe {
   border: none;
   transform: scale(1);
   transform-origin: 0 0;
-}
+} */
 
 /* .draft-editor {
   flex: 1;

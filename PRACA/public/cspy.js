@@ -798,7 +798,7 @@ class SVGGen {
 class CSPYCompiler {
 
 
-    static logEnable = false;
+    static logEnable = true;
 
     static setLogEnable(enable) {
         CSPYCompiler.logEnable = enable;
@@ -1237,6 +1237,161 @@ class CSPYCompiler {
         }
     }
 
+    /**
+     * 
+     * @param {...string} propNames 
+     * @returns {class}
+     */
+    static createLayoutClass(...propNames){
+        return class extends CSPY {
+    
+            constructor(...propValues){
+                super();
+                propNames.forEach((name, idx) => {
+                    if (propValues[idx] == undefined) {
+                        this[name] = this.inputs[name].defaultValue;
+                        return;
+                    } else {
+                        this[name] = propValues[idx];
+                        var tp = this.inputs[name];
+                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
+                    }
+                });
+            }
+    
+            async getlayoutboxes(callback = undefined) {
+                if (this.layoutBoxes) {
+                    CSPYCompiler.log("Returning cached layout boxes");
+                    if (callback) {
+                        await callback(this.layoutBoxes);
+                    }
+                    return this.layoutBoxes;
+                }
+    
+                if (typeof this.generateLayoutInternal === "function") {
+                    CSPYCompiler.log("Using cached function");
+                    this.generateLayout();
+                    if (callback) {
+                        await callback(this.layoutBoxes);
+                    }
+                    return this.layoutBoxes;
+                }
+    
+                // Construct prompts for the LLM
+                var p1 = "Imagine you are given a canvas with width and height set to 100. We will be constructing a layout of elements of this canvas according to this description:  " + this.prompt +
+                " The layout is consisted of numerious non-overlapping boxes specifying the coordinate of the top left, top right, botton left, bottom right position of each element. Each coordinate woule be like : {x: number, y: number}" +
+                " Describe how to programmatically create such a layout with javascript functions. " +
+                " Do this step by step. We will want to parameterize the following features:\n";
+    
+                var p2 = "Use the step-by-step instructions to construct a JavaScript function " +
+                " called generateLayout. generateLayout will accept an argument of an object " +
+                " that holds the parameters. For example {'a':5,'b':'up to down'}\n" +
+                " The output of generateLayout will be an array of objects, each representing a layout box of the 4 coordinate location for an element described above. Make sure the boxes of the generated layout will not overlap with each other. Example output: " +
+                `{
+                    "topLeft": {
+                        "x": 0,
+                        "y": 0
+                    },
+                    "topRight": {
+                        "x": 3,
+                        "y": 0
+                    },
+                    "bottomLeft": {
+                        "x": 0,
+                        "y": 8
+                    },
+                    "bottomRight": {
+                        "x": 3,
+                        "y": 8
+                    }
+                }`+
+                " The JavaScript function should not use browser features or external libraries. It should work by computing and returning the array of objects. Return the JavaScript function and nothing else. There should " +
+                " be no text before or after the function. You should expect the dictionary object that " +
+                " is fed to generateLayout to have the following: ";
+    
+                // Collect properties and construct prompts
+                const props = Object.keys(this.inputs);
+                props.forEach(prop => {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
+                        return;
+                    }
+                    
+                    if (tProp instanceof StaticInput || tProp instanceof ComputedInput) {
+                        p1 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                        p2 += `variable name: ${prop} which encodes the ${tProp.description}\n`;
+                    }
+                });
+    
+                CSPYCompiler.log(p1);
+                CSPYCompiler.log(p2);
+    
+                // Generate code using the specified LLM
+                if (this.llm == 'OpenAI') {
+                    await OpenAIGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                        this.setLayoutFunction(resp);
+                    });
+                } else if (this.llm == 'Groq') {
+                    await GroqGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                        this.setLayoutFunction(resp);
+                    });
+                } else {
+                    await AnthropicGen.getInstance().generateMultiturn([p1,p2], (resp) => {
+                        this.setLayoutFunction(resp);
+                    });
+                }
+    
+                this.generateLayout();
+                if (callback) {
+                    await callback(this.layoutBoxes);
+                }
+                return this.layoutBoxes;
+            }
+    
+            generateLayout() {
+                const props = Object.keys(this.inputs);
+                var tVals = {};
+                props.forEach(prop => {
+                    var tProp = this.inputs[prop];
+                    if (!tProp) {
+                        return;
+                    }
+                    
+                    if (tProp instanceof StaticInput || tProp instanceof ComputedInput) {
+                        tVals[prop] = tProp.defaultValue;
+                    }
+                });
+                this.layoutBoxes = this.generateLayoutInternal(tVals);
+            }
+    
+            setLayoutFunction(functionString) {
+                CSPYCompiler.log(functionString);
+                var func = eval("var generateLayoutInternal=" + functionString + "\ngenerateLayoutInternal;");
+                this.generateLayoutInternal = func;
+                this.javascriptString = functionString;
+                this.generateLayout();
+            }
+    
+            update(...propValues) {
+                var toRet = this.clone();
+                var iputs = {};
+                var idx = 0;
+                const props = Object.keys(this.inputs);
+                props.forEach((prop) => {
+                    var tProp = this.inputs[prop];
+                    tProp = tProp.clone();
+                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
+                    iputs[prop] = tProp;
+                    idx++;
+                });
+                toRet.inputs = iputs;
+                toRet.layoutBoxes = undefined;
+                return toRet;
+            }
+        }
+    }
+    
+
     static compileGeneric(newclass,inpr,tempInst,props) {
         var prompt = tempInst["prompt"];
         newclass.prototype.prompt = prompt;
@@ -1260,6 +1415,17 @@ class CSPYCompiler {
 
     }
 
+    static compileLayout(inpr, llm="Anthropic") {
+        var tempInst = new inpr();
+        // Extract properties from the input class
+        var props = Object.getOwnPropertyNames(tempInst);
+        props = props.filter(prop => prop !== "prompt");
+        var newclass = this.createLayoutClass(...props);
+        newclass.prototype['compiler'] = "layoutcompiler";
+        newclass.prototype['llm'] = llm;
+        return this.compileGeneric(newclass, inpr, tempInst, props);
+    }
+    
     static compilePrompt(inpr,llm="Anthropic") {
         var tempInst = new inpr();
         // read all properties of tempInst and load into an array
@@ -1331,6 +1497,8 @@ class CSPYCompiler {
             return this.compileCode(inpr,llm);
         } else if (outtype == "mixed") {
             return this.compileMixed(inpr,llm);
+        }else if (outtype == "layoutcompiler") {
+            return this.compileLayout(inpr, llm);
         }
     }
 }

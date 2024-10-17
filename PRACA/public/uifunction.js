@@ -154,6 +154,21 @@ if (!window.whole_canvas) {
 function setBackground(color) {
   window.canvas = new whole_canvas(color)
 }
+
+//render single svg with a given layout (array of boxes)
+function renderSingleSvgwithLayout(coordinatesArray, svgstring) {
+    coordinatesArray.forEach((coordObj) => {
+        const tl = coordObj.topLeft;
+        const tr = coordObj.topRight;
+        const bl = coordObj.bottomLeft;
+        const br = coordObj.bottomRight;
+
+        renderSvg(svgstring, null, null, tl, tr, bl, br);
+    });
+}
+
+
+//render a single svg
 function renderSvg(svgstring, coord = { x: 50, y: 50 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
   placeSvg(svgstring, window.canvas, coord, scale, tl, tr, bl, br)
 }

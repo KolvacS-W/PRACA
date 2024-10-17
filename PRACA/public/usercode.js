@@ -1,37 +1,81 @@
-setBackground('lightblue')
 
 
-var savedsvg1 = "<svg width=\"200\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- House body -->\n  <rect id=\"house_body\" x=\"50\" y=\"100\" width=\"100\" height=\"80\" fill=\"red\"/>\n  \n  <!-- Roof -->\n  <polygon id=\"roof\" points=\"50,100 100,50 150,100\" fill=\"brown\"/>\n  \n  <!-- Door -->\n  <rect id=\"door\" x=\"80\" y=\"140\" width=\"30\" height=\"40\" fill=\"saddlebrown\"/>\n  \n  <!-- Window -->\n  <rect id=\"window\" x=\"110\" y=\"120\" width=\"20\" height=\"20\" fill=\"lightblue\"/>\n  \n  <!-- Window frame -->\n  <line x1=\"120\" y1=\"120\" x2=\"120\" y2=\"140\" stroke=\"white\" stroke-width=\"2\"/>\n  <line x1=\"110\" y1=\"130\" x2=\"130\" y2=\"130\" stroke=\"white\" stroke-width=\"2\"/>\n</svg>"
-var savedsvg2 = "<svg width=\"200\" height=\"200\" xmlns=\"http://www.w3.org/2000/svg\">\n  <!-- House body -->\n  <rect id=\"house_body\" x=\"50\" y=\"100\" width=\"100\" height=\"80\" fill=\"brown\"/>\n  \n  <!-- Roof -->\n  <polygon id=\"roof\" points=\"50,100 100,50 150,100\" fill=\"brown\"/>\n  \n  <!-- Door -->\n  <rect id=\"door\" x=\"80\" y=\"140\" width=\"30\" height=\"40\" fill=\"saddlebrown\"/>\n  \n  <!-- Window -->\n  <polygon id=\"window\" points=\"110,120 120,105 130,120\" fill=\"lightblue\"/>\n  \n  <!-- Window frame -->\n  <line x1=\"110\" y1=\"120\" x2=\"130\" y2=\"120\" stroke=\"white\" stroke-width=\"2\"/>\n  <line x1=\"120\" y1=\"105\" x2=\"120\" y2=\"120\" stroke=\"white\" stroke-width=\"2\"/>\n</svg>"
-renderSvg(savedsvg1, {x:50, y: 50}, 0.5)
+await initializeAndSetApiKey().then(({ llm, api_key }) => {
+    console.log('set llm and key', llm, api_key)
+});
 
-renderSvg(savedsvg2, {x:20, y: 20}, 0.5)
-
-// await initializeAndSetApiKey().then(({ llm, api_key }) => {
-//     console.log('set llm and key', llm, api_key)
-// });
-
-// setBackground('lightblue')
+setBackground('white')
 
 
-// var simple = CSPYCompiler.compile(SimpleHouse,"prompt",llm);
+// Compile the class using the layoutcompiler
+var layoutClass = CSPYCompiler.compile(SimpleLayout, "layoutcompiler", llm);
 
-// console.log('A')
-// var inst1 = new simple("red","square");
-// console.log('B')
+// Create an instance with specific parameters
+var layoutInstance = new layoutClass(5); // section_count = 5
+
+// Get the layout boxes
+console.log("******************* COMPILING *******************");
+var boxes = await layoutInstance.getlayoutboxes();
+console.log(boxes);
+
+
+// function getRandomObjectFromArray(arr) {
+//     if (arr.length === 0) {
+//         return null; // Return null if the array is empty
+//     }
+//     const randomIndex = Math.floor(Math.random() * arr.length);
+//     return arr[randomIndex];
+// }
+
+
+var fill = CSPYCompiler.compile(FillBlock,"prompt",llm);
+// var wave = CSPYCompiler.compile(WaveBlock,"prompt",llm);
+// var pattern = CSPYCompiler.compile(PatternBlock,"prompt",llm);
+
+var inst1 = new fill();
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString));
+
+renderSingleSvgwithLayout(boxes, svg1)
+
+// var inst2 = new wave();
+// //save svg to UI, with name
+// // // Call getSVG, and pass a callback that calls saveSVG with the desired name
+// // var svg2 = await inst2.getSVG((svgString) => saveSVG(svgString));
+
+// var inst3 = new pattern();
 // //save svg to UI, with name
 // // Call getSVG, and pass a callback that calls saveSVG with the desired name
-// var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString, 'expname'));
+// // var svg3 = await inst3.getSVG((svgString) => saveSVG(svgString));
 
+// var elementarray = []
+// for (var i = 1; i<3; i++){
+//     var instfill = inst1.update();
+//     console.log(instfill)
+//     //save svg to UI, with name
+//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
+//     var svgfill = await instfill.getSVG();;
+//     //save svg to UI, with name
+//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
+//     var instwave = inst2.update();
+//     //save svg to UI, with name
+//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
+//     var svgwave = await instwave.getSVG();;
+//     //save svg to UI, with name
+//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
+//     var instpattern = inst3.update();
+//     //save svg to UI, with name
+//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
+//     var svgpattern = await instpattern.getSVG();
 
-// //save svg to UI, no name 
-// var inst2 = inst1.update("brown","triangle")
-// var svg2 =await inst2.getSVG((svgString) => saveSVG(svgString));
-// console.log('inst2:', inst2)
+//     elementarray.push(svgfill, svgwave, svgpattern)
+// }
 
-// // //don't save svg to UI
-// // var inst3 = inst1.update("green","circle")
-// // var svg3 =await inst3.getSVG((svgString) => saveSVG(svgString));
-// // console.log('inst3:', inst3)
+// for (var j = 1; j< 10; j++){
 
-// renderSvg(svg1, {x:50, y: 50}, 0.5)
+//     for (var k = 1; k<10; k++){
+//         var svg = getRandomObjectFromArray(elementarray)
+//         renderSvg(svg, {x:5*j, y:10+10*k}, 0.05*k)
+//     }
+// }

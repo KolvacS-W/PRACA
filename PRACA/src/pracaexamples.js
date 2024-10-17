@@ -134,3 +134,218 @@ class SimpleTree extends CSPY {
     leaf_density = new RandomChoiceInput("density of leaves, from 10-100", [10, 20, 30, 80], "number");
     branch_number = new RandomChoiceInput("number of tree branches, from 2-10", [2, 3, 4,5], "number");
 }
+
+await initializeAndSetApiKey().then(({ llm, api_key }) => {
+  console.log('set llm and key', llm, api_key)
+});
+
+function divideCanvasIntoBlocks(canvasWidth = 100, canvasHeight = 100, numBlocks = 7) {
+  // Create arrays to store the x and y coordinates of the dividing lines
+  let xLines = [0, canvasWidth];
+  let yLines = [0, canvasHeight];
+
+  // Generate random dividing lines
+  for (let i = 0; i < numBlocks - 2; i++) {
+    if (i % 2 === 0) {
+      xLines.push(Math.floor(Math.random() * canvasWidth));
+    } else {
+      yLines.push(Math.floor(Math.random() * canvasHeight));
+    }
+  }
+
+  // Sort the lines
+  xLines.sort((a, b) => a - b);
+  yLines.sort((a, b) => a - b);
+
+  // Generate blocks with four corner coordinates
+  let blocks = [];
+  for (let i = 0; i < xLines.length - 1; i++) {
+    for (let j = 0; j < yLines.length - 1; j++) {
+      blocks.push({
+        topLeft: { x: xLines[i], y: yLines[j] },
+        topRight: { x: xLines[i+1], y: yLines[j] },
+        bottomLeft: { x: xLines[i], y: yLines[j+1] },
+        bottomRight: { x: xLines[i+1], y: yLines[j+1] }
+      });
+    }
+  }
+
+  // Convert block coordinates to the requested format (0-100 range)
+  let coordinates = blocks.map(block => ({
+    topLeft: { 
+      x: Math.floor(block.topLeft.x / canvasWidth * 100),
+      y: Math.floor(block.topLeft.y / canvasHeight * 100)
+    },
+    topRight: { 
+      x: Math.floor(block.topRight.x / canvasWidth * 100),
+      y: Math.floor(block.topRight.y / canvasHeight * 100)
+    },
+    bottomLeft: { 
+      x: Math.floor(block.bottomLeft.x / canvasWidth * 100),
+      y: Math.floor(block.bottomLeft.y / canvasHeight * 100)
+    },
+    bottomRight: { 
+      x: Math.floor(block.bottomRight.x / canvasWidth * 100),
+      y: Math.floor(block.bottomRight.y / canvasHeight * 100)
+    }
+  }));
+
+  return coordinates;
+}
+
+// Usage
+let blockCoordinates = divideCanvasIntoBlocks();
+
+setBackground('white')
+
+// Wrap the asynchronous operations in an async function
+async function placeObjects() {
+  // Generate an object with specific parameter values
+var simpletree = CSPYCompiler.compile(SimpleTree,"code",llm);
+
+var inst1 = new simpletree();
+
+var svg1 = await inst1.getSVG((svgstring)=> saveSVG(svgstring, 'basehouse'));
+  
+  for (let idx = 0; idx < blockCoordinates.length; idx++) {
+    const block = blockCoordinates[idx];
+      var inst2 = inst1.update()
+var svg2 =await inst2.getSVG();
+    
+    renderSvg(svg2, null, 1, block.topLeft, block.topRight, block.bottomLeft, block.bottomRight);
+  }
+
+}
+
+// Call the async function
+placeObjects().catch(error => console.error('Error:', error));
+=====
+console.log('in class code')
+class FillBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with a shape inside");
+    shape_fill = new RandomChoiceInput("the black_filled shape inside the square", ['circle', 'triangle']);
+}
+
+class WaveBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with a black stroke wave inside");
+    type_wave = new RandomChoiceInput("the type of the wave, can be random shape", ['sin wave', 'cos wave']);
+}
+
+class PatternBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with black stroke patterns inside");
+    patten = new RandomChoiceInput("the pattern in the square", ['grid', 'dots', 'lines']);
+}
+
+
+
+await initializeAndSetApiKey().then(({ llm, api_key }) => {
+  console.log('set llm and key', llm, api_key)
+});
+
+setBackground('white')
+
+
+var fill = CSPYCompiler.compile(FillBlock,"prompt",llm);
+var wave = CSPYCompiler.compile(WaveBlock,"prompt",llm);
+var pattern = CSPYCompiler.compile(PatternBlock,"prompt",llm);
+
+var inst1 = new fill("red","square");
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString));
+
+
+var inst2 = new wave();
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+var svg2 = await inst2.getSVG((svgString) => saveSVG(svgString));
+
+var inst3 = new pattern();
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+var svg3 = await inst3.getSVG((svgString) => saveSVG(svgString));
+
+===
+console.log('in class code')
+class FillBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with a black-colored shape inside");
+    shape_fill = new RandomChoiceInput("the black_colored shape inside the square", ['circle', 'triangle', 'diamond', 'star', 'random polygon']);
+}
+
+class WaveBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with a black stroke wave inside");
+    type_wave = new RandomChoiceInput("the type of the wave, can be random shape", ['sin wave', 'polyline', 'cos wave']);
+}
+
+class PatternBlock extends CSPY {
+    prompt = new Prompt("A black stroke square with black stroke patterns inside");
+    patten = new RandomChoiceInput("the pattern in the square", ['grid', 'dots', 'lines']);
+}
+
+
+
+await initializeAndSetApiKey().then(({ llm, api_key }) => {
+  console.log('set llm and key', llm, api_key)
+});
+
+setBackground('white')
+
+function getRandomObjectFromArray(arr) {
+  if (arr.length === 0) {
+      return null; // Return null if the array is empty
+  }
+  const randomIndex = Math.floor(Math.random() * arr.length);
+  return arr[randomIndex];
+}
+
+
+var fill = CSPYCompiler.compile(FillBlock,"prompt",llm);
+var wave = CSPYCompiler.compile(WaveBlock,"prompt",llm);
+var pattern = CSPYCompiler.compile(PatternBlock,"prompt",llm);
+
+var inst1 = new fill();
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+// var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString));
+
+
+var inst2 = new wave();
+//save svg to UI, with name
+// // Call getSVG, and pass a callback that calls saveSVG with the desired name
+// var svg2 = await inst2.getSVG((svgString) => saveSVG(svgString));
+
+var inst3 = new pattern();
+//save svg to UI, with name
+// Call getSVG, and pass a callback that calls saveSVG with the desired name
+// var svg3 = await inst3.getSVG((svgString) => saveSVG(svgString));
+
+var elementarray = []
+for (var i = 1; i<3; i++){
+  var instfill = inst1.update();
+  console.log(instfill)
+  //save svg to UI, with name
+  // Call getSVG, and pass a callback that calls saveSVG with the desired name
+  var svgfill = await instfill.getSVG();;
+  //save svg to UI, with name
+  // Call getSVG, and pass a callback that calls saveSVG with the desired name
+  var instwave = inst2.update();
+  //save svg to UI, with name
+  // Call getSVG, and pass a callback that calls saveSVG with the desired name
+  var svgwave = await instwave.getSVG();;
+  //save svg to UI, with name
+  // Call getSVG, and pass a callback that calls saveSVG with the desired name
+  var instpattern = inst3.update();
+  //save svg to UI, with name
+  // Call getSVG, and pass a callback that calls saveSVG with the desired name
+  var svgpattern = await instpattern.getSVG();
+
+  elementarray.push(svgfill, svgwave, svgpattern)
+}
+
+for (var j = 1; j< 10; j++){
+
+  for (var k = 1; k<10; k++){
+      var svg = getRandomObjectFromArray(elementarray)
+      renderSvg(svg, {x:5*j, y:10+10*k}, 0.05*k)
+  }
+}

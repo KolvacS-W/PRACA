@@ -1278,15 +1278,15 @@ class CSPYCompiler {
                 }
     
                 // Construct prompts for the LLM
-                var p1 = "Imagine you are given a canvas with width and height set to 100. We will be constructing a layout of elements of this canvas according to this description:  " + this.prompt +
-                " The layout is consisted of numerious non-overlapping boxes specifying the coordinate of the top left, top right, botton left, bottom right position of each element. Each coordinate woule be like : {x: number, y: number}" +
+                var p1 = "Imagine you are given a canvas with width and height set to 100. We will be constructing a layout on this canvas following this layout pattern:  " + this.prompt +
+                ". First, create this layout pattern with points on the canvas. Further, we will replace each point with a box. The boxes will be non-overlapping. Each box is represented by the coordinate of the top left, top right, botton left, bottom right position. Each coordinate woule be like : {x: number, y: number}." +
                 " Describe how to programmatically create such a layout with javascript functions. " +
                 " Do this step by step. We will want to parameterize the following features:\n";
     
                 var p2 = "Use the step-by-step instructions to construct a JavaScript function " +
-                " called generateLayout. generateLayout will accept an argument of an object " +
-                " that holds the parameters. For example {'a':5,'b':'up to down'}\n" +
-                " The output of generateLayout will be an array of objects, each representing a layout box of the 4 coordinate location for an element described above. Make sure the boxes of the generated layout will not overlap with each other. Example output: " +
+                " called generateLayout to create the layout mentioned above. generateLayout will accept an argument of an object " +
+                " that holds the parameters. For example {'a':5,'b':'up to down', c: 'big'}\n" +
+                " The output of generateLayout will be an array of objects, each representing a layout box represented by 4 coordinates. Make sure the boxes of the generated layout will not overlap with each other. Example output: " +
                 `{
                     "topLeft": {
                         "x": 0,

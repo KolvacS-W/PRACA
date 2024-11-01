@@ -1,8 +1,9 @@
 console.log('in class code')
 // Define a class extending CSPY with desired properties
 class SimpleLayout extends CSPY {
-    prompt = new Prompt("A simple rectangular layout divided into random-shape sections");
-    section_count = new StaticInput("number of sections", 4, "The number of sections to divide the layout into", "int");
+    prompt = new Prompt("boxes compose random size triangles");
+    num_boxes = new Input("number of boxes on each triangle, 5-10")
+    
 }
 class FillBlock extends CSPY {
     prompt = new Prompt("A black stroke square with a shape inside");

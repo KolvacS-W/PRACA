@@ -11,12 +11,9 @@ setBackground('white')
 var layoutClass = CSPYCompiler.compile(SimpleLayout, "layoutcompiler", llm);
 
 // Create an instance with specific parameters
-var layoutInstance = new layoutClass(5); // section_count = 5
+var layoutInstance = new layoutClass(6); // section_count = 5
 
-// Get the layout boxes
-console.log("******************* COMPILING *******************");
 var boxes = await layoutInstance.getlayoutboxes();
-console.log(boxes);
 
 
 // function getRandomObjectFromArray(arr) {

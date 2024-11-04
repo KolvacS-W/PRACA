@@ -14,6 +14,7 @@ const App: React.FC = () => {
     js: ``,
   });
   const [usercode, setUserCode] = useState<{ js: string }>({ js: '' });   // Initialize usercode
+  const [loadList, setLoadList] = useState('No DB Loaded') //for loaded objectDB
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const handleRunClassCode = () => {
     console.log('posting msg EXECUTE_CLASSCODE')
@@ -39,6 +40,7 @@ const App: React.FC = () => {
       );
       return updatedVersions;
     });
+    setUserCode(newuserCode) //save newest edited usercode
     if (iframeRef.current?.contentWindow) {
       iframeRef.current.contentWindow.postMessage(
         {
@@ -116,6 +118,35 @@ const App: React.FC = () => {
   
     fetchCode();
   }, []);
+
+  //show the loaded ObjectDB information
+  useEffect(() =>{
+    const handleIframeMessage = (event: MessageEvent) => {
+
+      if (event.data.type === 'show loadList') {
+          setLoadList('Loaded:\n' + event.data.loadList)
+          // var newuserCode = event.data.loadList + '\n' + usercode.js
+          // console.log('newusercode', newuserCode)
+          // setUserCode({js: newuserCode})
+          // setVersions((prevVersions) => {
+          //   const updatedVersions = prevVersions.map(version =>
+          //     version.id === currentVersionId
+          //       ? { ...version, usercode: {js: newuserCode}, highlightedSVGPieceList: []}
+          //       : version
+          //   );
+          //   return updatedVersions;
+          // });
+          // Optional: Trigger a re-render explicitly
+          // setTimeout(() => {
+          //   window.location.reload(); // This reloads the entire page
+          // }, 100); // Delay to ensure the state update is processed
+        }
+      }
+      window.addEventListener('message', handleIframeMessage);
+      return () => {
+        window.removeEventListener('message', handleIframeMessage);
+      };
+  }, [usercode])
   
 
   return (
@@ -156,6 +187,16 @@ const App: React.FC = () => {
             </div>
   
             <div className="code-editor-container">
+            <div className="header-container">
+            <h1 className="custom-title">
+              {loadList.split('\n').map((line, index) => (
+                <React.Fragment key={index}>
+                  {line}
+                  <br />
+                </React.Fragment>
+              ))}
+            </h1>
+          </div>
               <CustomCodeEditor
                 llm ={llm}
                 classcode={classcode}

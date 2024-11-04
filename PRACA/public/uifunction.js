@@ -133,18 +133,21 @@ if (!window.whole_canvas) {
         create_canvas(canvas_color) {
             console.log('document', document);
             const canvasContainer = document.getElementById('canvasContainer');
-            
-            // Clear all contents of canvasContainer
-            while (canvasContainer.firstChild) {
-                canvasContainer.removeChild(canvasContainer.firstChild);
-            }
-            
+        
+            // Loop through the children of canvasContainer and remove everything except the button-container
+            Array.from(canvasContainer.children).forEach(child => {
+                if (!child.classList.contains('button-container')) {
+                    canvasContainer.removeChild(child);
+                }
+            });
+        
             // Set the background color of the canvasContainer
             canvasContainer.style.backgroundColor = canvas_color;
-            
+        
             console.log('create canvas', document);
             return canvasContainer;
         }
+        
         
         // Method to get the full HTML including the canvas contents
         get_full_html() {
@@ -711,10 +714,12 @@ function uploadDB() {
                     var objects = ObjectDatabase.getObjects();
                     // loop over key/value pairs
                     for (var key in objects) {
-                    loadList += "//" + key + "\n";
+                    loadList += "" + key + "\n";
                     window[key] = objects[key];
                     }
                     console.log('loadList', loadList)
+                    //send message to app.tsx
+                    window.parent.postMessage({ type: 'show loadList', loadList:loadList }, '*');
                 } catch (error) {
                     console.error("Error loading database:", error);
                 }
@@ -727,6 +732,23 @@ function uploadDB() {
         fileInput.click();
     })
 
+}
+
+function emptyDB(){
+
+    loadCspyScript(() => {
+    console.log('cspy.js loaded successfully.');
+    // Clear all arrays
+    ObjectDatabase.classes = [];
+    ObjectDatabase.instances = [];
+    ObjectDatabase.classNames = [];
+    ObjectDatabase.instanceNames = [];
+    ObjectDatabase.id = 0; // Reset the ID counter
+
+    // modify the download button to show the number of classes and instances
+    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+
+    })
 }
 
 

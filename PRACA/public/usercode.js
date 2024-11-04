@@ -4,7 +4,7 @@ await initializeAndSetApiKey().then(({ llm, api_key }) => {
     console.log('set llm and key', llm, api_key)
 });
 
-setBackground('white')
+setBackground('pink')
 
 var simple = CSPYCompiler.compile(SimpleHouse,"prompt");
 saveClass(simple)

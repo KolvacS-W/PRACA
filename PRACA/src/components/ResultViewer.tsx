@@ -354,20 +354,46 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
                     width: 100%;
                     height: 100%;
                   }
-                </style>
-              <body>
-                  <div id="canvasContainer"></div>
-                  <button onclick="downloadDB()" id="download-db">Download DB</button>
-                  <button onclick="uploadDB()" id="upload-db">Upload DB</button>
+.button-container {
+                  position: fixed;
+                  top: 10px;
+                  left: 50%;
+                  transform: translateX(-50%);
+                  display: flex;
+                  gap: 10px;
+                  z-index: 9999;
+                }
+                .control-button {
+                  padding: 8px 16px;
+                  background-color: #ffffff;
+                  border: 1px solid #cccccc;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 14px;
+                  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+                  transition: all 0.2s ease;
+                }
+                .control-button:hover {
+                  background-color: #f5f5f5;
+                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                }
+            </style>
+            <body>
+              <div id="canvasContainer">
+                <div class="button-container">
+                  <button onclick="downloadDB()" id="download-db" class="control-button">Download DB</button>
+                  <button onclick="uploadDB()" id="upload-db" class="control-button">Load DB</button>
+                  <button onclick="emptyDB()" id="empty-db" class="control-button">Empty DB</button>
+                </div>
+              </div>
 
-                  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
-                  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-                  <script src="/uifunction.js" ></script>
-                  <script src="/main.js" ></script>
-              </body>
-              
-              </html>
-            `);
+              <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
+              <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+              <script src="/uifunction.js"></script>
+              <script src="/main.js"></script>
+            </body>
+            </html>
+          `);
           }
           newDocument.close();
         }

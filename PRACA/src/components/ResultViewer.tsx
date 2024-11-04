@@ -357,11 +357,15 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
                 </style>
               <body>
                   <div id="canvasContainer"></div>
+                  <button onclick="downloadDB()" id="download-db">Download DB</button>
+                  <button onclick="uploadDB()" id="upload-db">Upload DB</button>
+
                   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/1.4.0/fabric.min.js"></script>
                   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-                  <script src="/uifunction.js"></script>
-                  <script src="/main.js"></script>
+                  <script src="/uifunction.js" ></script>
+                  <script src="/main.js" ></script>
               </body>
+              
               </html>
             `);
           }
@@ -447,7 +451,7 @@ const ResultViewer: React.FC<ResultViewerProps> = ({ currentVersionId, setVersio
         ref={iframeRef}
         title="result-viewer iframe"
         style={{ width: '100%', height: '100%', backgroundColor: 'white' }}
-        sandbox="allow-scripts allow-same-origin" // Add allow-same-origin
+        sandbox="allow-scripts allow-same-origin allow-downloads" // Add allow-same-origin
         onLoad={handleIframeLoad} // Attach the onLoad handler
       />
     </div>

@@ -1,3 +1,19 @@
+//for intitial upload, where cspy is not loaded yet
+// Function to dynamically load cspy.js
+function loadCspyScript(callback) {
+    // Check if the script is already loaded
+    if (!document.querySelector(`script[src="/cspy.js"]`)) {
+      const script = document.createElement('script');
+      script.src = '/cspy.js';
+      script.type = 'text/javascript';
+      script.onload = callback; // Call the callback function once the script is loaded
+      document.head.appendChild(script);
+    } else {
+      // If the script is already loaded, just call the callback
+      callback();
+    }
+  }
+
 //functions to set llm and apikey
 async function initialize_LLM() {
     // Send message to parent window to request the LLM key
@@ -620,3 +636,97 @@ async function saveSVG(svgString, name = '') {
         window.addEventListener('message', messageHandler);
     });
 }
+
+function saveInstance(inst) {
+    if (inst) {
+      ObjectDatabase.addInstance(inst);
+    }
+    // modify the download button to show the number of classes and instances
+    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+  }
+
+  function saveClass(compClass) {
+    if (compClass) {
+      ObjectDatabase.addClass(compClass);
+    }
+    // modify the download button to show the number of classes and instances
+    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+  }
+
+  function downloadDB() {
+    console.log('called download DB');
+
+    // Get the JSON string from ObjectDatabase
+    const text = ObjectDatabase.getJSONString();
+    const name = "cspy-db.json";
+
+    // Ensure the text is valid and not empty
+    if (text) {
+        try {
+            // Create a Blob with the JSON string
+            const blob = new Blob([text], { type: 'application/json' });
+
+            // Create a link element
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+
+            // Append the link to the body and click it to initiate the download
+            document.body.appendChild(link);
+            console.log('document.body', document.body)
+            link.click();
+
+            // Remove the link from the document
+            document.body.removeChild(link);
+            console.log('File downloaded successfully.');
+        } catch (error) {
+            console.error('Error during file download:', error);
+        }
+    } else {
+        console.error('Failed to generate JSON string for download.');
+    }
+}
+
+function uploadDB() {
+    loadCspyScript(() => {
+        console.log('cspy.js loaded successfully.');
+        // Create a hidden file input element
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.json';
+        fileInput.style.display = 'none';
+
+        // Add it to the document
+        document.body.appendChild(fileInput);
+
+        // Handle file selection
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                try {
+                    const text = await file.text();
+                    console.log('ObjectDatabase', ObjectDatabase)
+                    ObjectDatabase.parseJSONString(text);
+                    var loadList = "";
+                    var objects = ObjectDatabase.getObjects();
+                    // loop over key/value pairs
+                    for (var key in objects) {
+                    loadList += "//" + key + "\n";
+                    window[key] = objects[key];
+                    }
+                    console.log('loadList', loadList)
+                } catch (error) {
+                    console.error("Error loading database:", error);
+                }
+            }
+            // Clean up
+            document.body.removeChild(fileInput);
+        });
+
+        // Trigger file selection dialog
+        fileInput.click();
+    })
+
+}
+
+

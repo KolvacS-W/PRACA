@@ -6,73 +6,27 @@ await initializeAndSetApiKey().then(({ llm, api_key }) => {
 
 setBackground('white')
 
+var simple = CSPYCompiler.compile(SimpleHouse,"prompt");
+saveClass(simple)
 
-// Compile the class using the layoutcompiler
-var layoutClass = CSPYCompiler.compile(SimpleLayout, "layoutcompiler", llm);
+console.log('check DB', ObjectDatabase.getJSONString())
+var inst1 = new simple("red",30);
 
-// Create an instance with specific parameters
-var layoutInstance = new layoutClass(6); // section_count = 5
-
-var boxes = await layoutInstance.getlayoutboxes();
-
-
-// function getRandomObjectFromArray(arr) {
-//     if (arr.length === 0) {
-//         return null; // Return null if the array is empty
-//     }
-//     const randomIndex = Math.floor(Math.random() * arr.length);
-//     return arr[randomIndex];
-// }
-
-
-var fill = CSPYCompiler.compile(FillBlock,"prompt",llm);
-// var wave = CSPYCompiler.compile(WaveBlock,"prompt",llm);
-// var pattern = CSPYCompiler.compile(PatternBlock,"prompt",llm);
-
-var inst1 = new fill();
 //save svg to UI, with name
 // Call getSVG, and pass a callback that calls saveSVG with the desired name
 var svg1 = await inst1.getSVG((svgString) => saveSVG(svgString));
 
-renderSingleSvgwithLayout(boxes, svg1)
+saveInstance(inst1)
+console.log('check DB', ObjectDatabase.getJSONString())
 
-// var inst2 = new wave();
-// //save svg to UI, with name
-// // // Call getSVG, and pass a callback that calls saveSVG with the desired name
-// // var svg2 = await inst2.getSVG((svgString) => saveSVG(svgString));
+// //save svg to UI, no name 
+// var inst2 = inst1.update("brown",60)
+// var svg2 =await inst2.getSVG((svgString) => saveSVG(svgString));
+// console.log('inst2:', inst2)
 
-// var inst3 = new pattern();
-// //save svg to UI, with name
-// // Call getSVG, and pass a callback that calls saveSVG with the desired name
-// // var svg3 = await inst3.getSVG((svgString) => saveSVG(svgString));
+// //don't save svg to UI
+// var inst3 = inst1.update("green","circle")
+// var svg3 =await inst3.getSVG((svgString) => saveSVG(svgString));
+// console.log('inst3:', inst3)
 
-// var elementarray = []
-// for (var i = 1; i<3; i++){
-//     var instfill = inst1.update();
-//     console.log(instfill)
-//     //save svg to UI, with name
-//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
-//     var svgfill = await instfill.getSVG();;
-//     //save svg to UI, with name
-//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
-//     var instwave = inst2.update();
-//     //save svg to UI, with name
-//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
-//     var svgwave = await instwave.getSVG();;
-//     //save svg to UI, with name
-//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
-//     var instpattern = inst3.update();
-//     //save svg to UI, with name
-//     // Call getSVG, and pass a callback that calls saveSVG with the desired name
-//     var svgpattern = await instpattern.getSVG();
-
-//     elementarray.push(svgfill, svgwave, svgpattern)
-// }
-
-// for (var j = 1; j< 10; j++){
-
-//     for (var k = 1; k<10; k++){
-//         var svg = getRandomObjectFromArray(elementarray)
-//         renderSvg(svg, {x:5*j, y:10+10*k}, 0.05*k)
-//     }
-// }
+renderSvg(svg1, {x:50, y: 50}, 0.5)

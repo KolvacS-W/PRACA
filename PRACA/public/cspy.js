@@ -36,6 +36,11 @@ class Input {
         this.type = Input.getType(defaultValue,type);
         this.defaultValue = Input.convert(defaultValue,this.type);
         this.inputtype = this.constructor.name;
+
+    }
+
+    setName(name) {
+        this.variableName = name;
     }
 
     static getType(defaultValue,type=undefined) {
@@ -73,10 +78,14 @@ class Input {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new Input(inJSON.description,
-                        inJSON.defaultValue,
-                        inJSON.explanation,
-                        inJSON.type));
+        var toRet = new Input(inJSON.description,
+            inJSON.defaultValue,
+            inJSON.explanation,
+            inJSON.type);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
     /**
@@ -97,7 +106,8 @@ class Input {
             'defaultValue':this.defaultValue,
             'explanation':this.explanation,
             'type':this.type,
-            'inputtype':this.inputtype
+            'inputtype':this.inputtype,
+            'variableName':this.variableName
         };
         return(toRet);
     }
@@ -117,10 +127,14 @@ class ComputedInput extends Input {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new ComputedInput(inJSON.description,
-                        inJSON.defaultValue,
-                        inJSON.explanation,
-                        inJSON.type));
+        var toRet = new ComputedInput(inJSON.description,
+            inJSON.defaultValue,
+            inJSON.explanation,
+            inJSON.type);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
 }
@@ -158,9 +172,13 @@ class RandomChoiceInput extends ComputedInput {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new RandomChoiceInput(inJSON.description,
-                                    inJSON.choices,
-                                    inJSON.type));
+        var toRet = new RandomChoiceInput(inJSON.description,
+            inJSON.choices,
+            inJSON.type);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
     toJSON() {
@@ -195,8 +213,12 @@ class LLMChoiceInput extends RandomChoiceInput {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new LLMChoiceInput(inJSON.description,
-                                    inJSON.llm));
+        var toRet = new LLMChoiceInput(inJSON.description,
+            inJSON.llm);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
     async compute() {
@@ -247,9 +269,13 @@ class ImageInput extends ComputedInput {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new ImageInput(inJSON.description,inJSON.defaultValue,
-            inJSON.explanation,inJSONtype,
-            inJSON.url,inJSON.llm));
+        var toRet = new ImageInput(inJSON.description,inJSON.defaultValue,
+            inJSON.explanation,inJSON.type,
+            inJSON.url,inJSON.llm);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
     async compute() {
@@ -289,10 +315,14 @@ class StaticInput extends Input {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new StaticInput(inJSON.description,
-                        inJSON.defaultValue,
-                        inJSON.explanation,
-                        inJSON.type));
+        var toRet = new StaticInput(inJSON.description,
+            inJSON.defaultValue,
+            inJSON.explanation,
+            inJSON.type);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 
 }
@@ -322,7 +352,11 @@ class ContextInput extends Input {
         if (typeof inJSON === 'string' || inJSON instanceof String) {
             inJSON = JSON.parse(inJSON);
         }
-        return(new ContextInput(inJSON.description,inJSON.defaultValue));
+        var toRet = new ContextInput(inJSON.description,inJSON.defaultValue);
+        if (inJSON.variableName) {
+            toRet.setName(inJSON.variableName);
+        }
+        return(toRet);
     }
 }
 
@@ -1104,6 +1138,8 @@ class SVGGen {
 
     svgString = undefined;
 
+    //inputs = {};
+
     /**
      * 
      * @returns {string}
@@ -1114,6 +1150,43 @@ class SVGGen {
             await callback(this.svgString);
         }
         return this.svgString;
+    }
+
+    getInputKeys() {
+        return(Object.keys(this.inputs));
+    }
+
+    setParameter(name,value) {
+        // loop over inputs, find the one with the name, set the value
+        //console.log("setParameter",name,value);
+        if (this.inputs) {
+            if (this.inputs[name]) {
+                var inp = this.inputs[name];
+                inp.defaultValue = Input.convert(value,inp.type);
+            }
+        }
+        return(this);
+    }
+
+    setParameters(params) {
+        if (params) {
+            Object.keys(params).forEach(name => {
+                this.setParameter(name,params[name]);
+            });
+        }
+        return(this);
+    }
+
+    async calcComputedInputs(props) {
+        // loop over all keys in inputs
+        for (var prop in this.inputs) {
+            var tProp = this.inputs[prop];
+            if (tProp) {
+                if (tProp instanceof ComputedInput) {
+                    await tProp.compute();
+                }
+            }
+        }
     }
 
     /**
@@ -1166,6 +1239,10 @@ class SVGGen {
         toRet.innerUpdate(inJSON);
         return toRet;
     }
+
+    makeVariant(params) {
+        // dummy
+    }
 }
 
 /**
@@ -1194,59 +1271,24 @@ class CSPYCompiler {
 
     /**
      * 
-     * @param {...string} propNames 
      * @returns {class}
      */
-    static createPromptClass(...propNames){
+    static createPromptClass(){
         return class extends SVGGen {
 
-            constructor(...propValues){
+            constructor(params=undefined){
                 super();
-                console.log("-------",propNames);
-                propNames.forEach((name, idx) => {
-                    console.log(name,idx,propValues[idx]);
-                    if (!this.inputs[name]) {
-                        return;
-                    } else {
-                        if (!this.inputs[name] instanceof Input) {
-                            return;
-                        }
-                    }
-                    if (propValues[idx] == undefined) {
-                        this[name] = this.inputs[name].defaultValue;
-                        return;
-                    } else {
-                        console.log(name,idx,propValues[idx]);
-                        this[name] = propValues[idx];
-                        var tp = this.inputs[name];
-                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
-                    }
-                });
-                console.log("-------");
-
+                this.setParameters(params);
             }
 
-            async calcComputedInputs(props) {
-                for (var i = 0 ; i < props.length ; i++) {
-                    var prop = props[i];
-                    var tProp = this.inputs[prop];
-                    if (tProp) {
-                        if (tProp instanceof ComputedInput) {
-                            await tProp.compute();
-                        }
-                    }
-                }
-            }
 
             async getSVG(callback = undefined) {
                 if (this.svgString) {
-                    CSPYCompiler.log("Returning cached SVG");
                     return super.getSVG();
                 }
                 this.svgString = "";
-                CSPYCompiler.log("Generating SVG...");
 
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 //console.log(this.inputs);
                 var propPromptString = "";
                 var contextPromptString = undefined;
@@ -1263,7 +1305,6 @@ class CSPYCompiler {
                     interDict[prop] = tProp.defaultValue;
 
                     if (tProp instanceof StaticInput) {
-                        console.log("00-0-0-0-0-0--0-0-0-");
                         propPromptString += `The ${prop} should be ${tProp.defaultValue}\n`;
                         
                     } else if (tProp instanceof ContextInput) {
@@ -1317,16 +1358,17 @@ class CSPYCompiler {
                 this.svgString = inJSON.svgString;
             }
 
-            update(...propValues) {
+            makeVariant(params=undefined) {
+                console.log("makeVariant",params);
                 var toRet = this.clone();
                 var iputs = {};
                 var toRetPNames = [];
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var idx = 0;
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
+                    //tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
                     idx++;
@@ -1337,6 +1379,7 @@ class CSPYCompiler {
                 
                 toRet.inputs['contextString'] = new ContextInput("starter SVG",this.svgString);
                 toRet.svgString = undefined;
+                toRet.setParameters(params);
                 return toRet;
             }
 
@@ -1348,43 +1391,15 @@ class CSPYCompiler {
      * @param {...string} propNames 
      * @returns {class}
      */
-     static createTemplateClass(...propNames){
+     static createTemplateClass(){
 
         return class extends SVGGen {
 
-            constructor(...propValues){
+            constructor(params=undefined){
                 super();
-                propNames.forEach((name, idx) => {
-                    if (!this.inputs[name]) {
-                        return;
-                    } else {
-                        if (!this.inputs[name] instanceof Input) {
-                            return;
-                        }
-                    }
-                    if (propValues[idx] == undefined) {
-                        this[name] = this.inputs[name].defaultValue;
-                        return;
-                    } else {
-                        //console.log(name,idx,propValues[idx]);
-                        this[name] = propValues[idx];
-                        var tp = this.inputs[name];
-                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
-                    }
-                });
+                this.setParameters(params);
             }
 
-            async calcComputedInputs(props) {
-                for (var i = 0 ; i < props.length ; i++) {
-                    var prop = props[i];
-                    var tProp = this.inputs[prop];
-                    if (tProp) {
-                        if (tProp instanceof ComputedInput) {
-                            await tProp.compute();
-                        }
-                    }
-                }
-            }
 
             async getSVG(callback = undefined) {
                 if (this.svgString) {
@@ -1393,7 +1408,7 @@ class CSPYCompiler {
                 }
                 if (this.svgTemplate) {
                     CSPYCompiler.log("Filling template");
-                    await this.calcComputedInputs(Object.keys(this.inputs));
+                    await this.calcComputedInputs(this.getInputKeys());
                     this.fillTemplate();
                     return super.getSVG(callback);
                 }
@@ -1402,7 +1417,7 @@ class CSPYCompiler {
                   
                 CSPYCompiler.log("Generating SVG...");
 
-                const dProps = Object.keys(this.inputs);
+                const dProps = this.getInputKeys();
                 var interDict = {};
 
                 dProps.forEach(prop => {
@@ -1433,7 +1448,7 @@ class CSPYCompiler {
                 "(e.g., fill = \"#e0d0c0\" to fill = \"${parameter name}\") instead of just part of it (e.g., "+
                 "fill = \"#e0d0c0\" to fill = \"#${parameter name}\"). Return svg code template for this parameter list:\n\n";
               
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var contextPromptString = undefined;
 
                 await this.calcComputedInputs(props);
@@ -1493,7 +1508,7 @@ class CSPYCompiler {
 
             fillTemplate() {
                   //console.log(this.inputs);
-                  const props = Object.keys(this.inputs);
+                  const props = this.getInputKeys();
                   const tvals = {};
                   props.forEach((prop) => {
                     var tProp = this.inputs[prop];
@@ -1507,16 +1522,16 @@ class CSPYCompiler {
                 //return this.svgString;
             }
 
-            update(...propValues) {
+            makeVariant(params=undefined)  {
                 var toRet = this.clone();
                 var iputs = {};
                 var toRetPNames = [];
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var idx = 0;
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
+                    //tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     console.log(props,tProp.defaultValue);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
@@ -1526,7 +1541,7 @@ class CSPYCompiler {
                 toRet.propNames = toRetPNames;
                 toRet.svgTemplate = this.svgTemplate;
                 toRet.svgString = undefined;
-                console.log("updating");
+                toRet.setParameters(params);
                 return toRet;
             }
 
@@ -1543,42 +1558,15 @@ class CSPYCompiler {
          * @param {...string} propNames 
          * @returns {class}
          */
-    static createCodeClass(...propNames){
+    static createCodeClass(){
         return class extends SVGGen {
 
-            constructor(...propValues){
+            constructor(params=undefined){
                 super();
-                propNames.forEach((name, idx) => {
-                    if (!this.inputs[name]) {
-                        return;
-                    } else {
-                        if (!this.inputs[name] instanceof Input) {
-                            return;
-                        }
-                    }
-                    if (propValues[idx] == undefined) {
-                        this[name] = this.inputs[name].defaultValue;
-                        return;
-                    } else {
-                        //console.log(name,idx,propValues[idx]);
-                        this[name] = propValues[idx];
-                        var tp = this.inputs[name];
-                        this.inputs[name].defaultValue = Input.convert(propValues[idx],tp.type);
-                    }
-                });
+                this.setParameters(params);            
             }
 
-            async calcComputedInputs(props) {
-                for (var i = 0 ; i < props.length ; i++) {
-                    var prop = props[i];
-                    var tProp = this.inputs[prop];
-                    if (tProp) {
-                        if (tProp instanceof ComputedInput) {
-                            await tProp.compute();
-                        }
-                    }
-                }
-            }
+            
 
             async getSVG(callback = undefined) {
                 if (this.svgString) {
@@ -1587,12 +1575,12 @@ class CSPYCompiler {
                 }
                 if (typeof this.fillTemplateInternal === "function") {
                     CSPYCompiler.log("Returning cached function");
-                    await this.calcComputedInputs(Object.keys(this.inputs));
+                    await this.calcComputedInputs(this.getInputKeys());
                     this.fillTemplate();
                     return super.getSVG(callback);
                 }
 
-                const dProps = Object.keys(this.inputs);
+                const dProps = this.getInputKeys();
                 var interDict = {};
 
                 dProps.forEach(prop => {
@@ -1617,7 +1605,7 @@ class CSPYCompiler {
                 "be no text before or after the function. You should expect the dictionary object that "+
                 "is fed to fillTemplate to have the following: "
 
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var contextPromptString = undefined;
 
                 await this.calcComputedInputs(props);
@@ -1668,7 +1656,7 @@ class CSPYCompiler {
             }
 
             fillTemplate() {
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var tVals = {};
                 props.forEach(prop => {
                     var tProp = this.inputs[prop];
@@ -1703,16 +1691,16 @@ class CSPYCompiler {
             }
 
 
-            update(...propValues) {
+            makeVariant(params=undefined) {
                 var toRet = this.clone();
                 var iputs = {};
                 var toRetPNames = [];
-                const props = Object.keys(this.inputs);
+                const props = this.getInputKeys();
                 var idx = 0;
                 props.forEach((prop) => {
                     var tProp = this.inputs[prop];
                     tProp = tProp.clone();
-                    tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
+                    //tProp.defaultValue = Input.convert(propValues[idx],tProp.type);
                     iputs[prop] = tProp;
                     toRetPNames.push(prop);
                     idx++;
@@ -1721,6 +1709,7 @@ class CSPYCompiler {
                 toRet.propNames = toRetPNames;
                 // the clone should now have a contextinput, so
                 toRet.svgString = undefined;
+                toRet.setParameters(params);
                 return toRet;
             }
 
@@ -1734,12 +1723,13 @@ class CSPYCompiler {
     }
 
     static compileGeneric(newclass,inpr,tempInst,props) {
+        //console.log("COMPILING!",props);
         var prompt = tempInst["prompt"];
         if (prompt == undefined) {
             prompt = inpr["prompt"];
         }
 
-        var sProps = [];
+        //var sProps = [];
 
         var inputs = {};
         for (var i = 0; i < props.length; i++) {
@@ -1749,15 +1739,23 @@ class CSPYCompiler {
            }
            if (iput instanceof Input) {
              inputs[props[i]] = iput.clone();
-             sProps.push(props[i]);
+             inputs[props[i]].setName(props[i]);
+             //newclass[props[i]] = function(val) {
+             //    this.setParam(props[i],val);
+             // }
+             var key = props[i];
+             //newclass.prototype[props[i]] = function(value) {
+                //console.log("Key:",key,"Value:",value);
+                //return this.setParameter(key,value);
+             //}
+             newclass.prototype[props[i]] = new Function("val","return this.setParameter('"+key+"',val);");
+             //sProps.push(props[i]);
            }
         }
 
         //console.log("SSSSSS Props",sProps);
         newclass.prototype.prompt = prompt;
-        newclass.prototype.properties = sProps;
         newclass.prompt = prompt;
-        newclass.properties = sProps;
         newclass.prototype.className = tempInst.getClassName();
         newclass.className = tempInst.getClassName();
 
@@ -1786,7 +1784,7 @@ class CSPYCompiler {
          props = sProps;
 
         //props = props.filter(prop => prop !== "prompt");
-        var newclass = this.createPromptClass(...props);
+        var newclass = this.createPromptClass();
         newclass.prototype['compiler'] = "prompt";
         newclass.prototype['llm'] = CSPYCompiler.checkModel(llm);
         return this.compileGeneric(newclass,inpr,tempInst,props);
@@ -1800,7 +1798,7 @@ class CSPYCompiler {
             props = Object.getOwnPropertyNames(inpr);
         }
         //props = props.filter(prop => prop !== "prompt");
-        var newclass = this.createTemplateClass(...props);
+        var newclass = this.createTemplateClass();
         newclass.prototype['compiler'] = "template";
         newclass.prototype['llm'] = CSPYCompiler.checkModel(llm);
         return this.compileGeneric(newclass,inpr,tempInst,props);
@@ -1819,7 +1817,7 @@ class CSPYCompiler {
             props = Object.getOwnPropertyNames(inpr);
         }
         //props = props.filter(prop => prop !== "prompt");
-        var newclass = this.createCodeClass(...props);
+        var newclass = this.createCodeClass();
         newclass.prototype['compiler'] = "code";
         newclass.prototype['llm'] = CSPYCompiler.checkModel(llm);
         return this.compileGeneric(newclass,inpr,tempInst,props);

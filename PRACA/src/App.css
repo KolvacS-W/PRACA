@@ -435,3 +435,53 @@ textarea {
   font-size: 16px; /* Make the font size smaller */
   font-weight: normal; /* Remove the bold effect */
 }
+
+.button-container {
+  display: flex;
+  flex-direction: row;  /* Explicitly set horizontal direction */
+  justify-content: flex-start;  /* Align buttons from the start */
+  align-items: center;
+  gap: 10px;
+  width: 100%;  /* Ensure container takes full width */
+}
+
+.control-button-download {
+  flex: 0 0 auto;
+  padding: 8px 16px;
+  width: 100px;
+  height: 70px;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  /* Enable text wrapping */
+  white-space: normal;
+  word-wrap: break-word;
+  /* Center the text vertically and horizontally */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.control-button {
+  flex: 0 0 auto;  /* Prevent button from growing or shrinking */
+  padding: 8px 16px;
+  height: 70px;
+  background-color: #ffffff;
+  border: 1px solid #cccccc;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;  /* Prevent text wrapping */
+}
+
+.control-button:hover, .control-button-download:hover {
+  background-color: #f5f5f5;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}

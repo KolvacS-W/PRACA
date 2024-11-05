@@ -16,6 +16,7 @@ const App: React.FC = () => {
   const [usercode, setUserCode] = useState<{ js: string }>({ js: '' });   // Initialize usercode
   const [loadList, setLoadList] = useState('No DB Loaded') //for loaded objectDB
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const [buttonText, setButtonText] = useState('Download DB (0 classes, 0 instances)');
   const handleRunClassCode = () => {
     console.log('posting msg EXECUTE_CLASSCODE')
     if (iframeRef.current?.contentWindow) {
@@ -147,58 +148,105 @@ const App: React.FC = () => {
         window.removeEventListener('message', handleIframeMessage);
       };
   }, [usercode])
+
+  //DB buttons
+  const handleDownloadDB = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'DOWNLOAD_DB' },
+        '*'
+      );
+    }
+  };
   
+  const handleUploadDB = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'UPLOAD_DB' },
+        '*'
+      );
+    }
+    console.log('UPLOAD_DB called')
+  };
+  
+  const handleEmptyDB = () => {
+    if (iframeRef.current?.contentWindow) {
+      iframeRef.current.contentWindow.postMessage(
+        { type: 'EMPTY_DB' },
+        '*'
+      );
+    }
+  };
+  //to update DB button text
+  // Listen for messages from the iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data.type === 'UPDATE_BUTTON_TEXT') {
+        const { classCount, instanceCount } = event.data;
+        setButtonText(`Download DB (${classCount} classes, ${instanceCount} instances)`);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+    };
+  }, []);
 
   return (
     <div className="App">
       <div className="editor-section">
         {currentVersionId !== null && versions.find(version => version.id === currentVersionId) && (
           <>
-  
             <div className="class-editor-container">
-                          {/* Make this section small and place it on top of ClassEditor */}
-            <div className="header-container">
-              <h1 className="small-title">Generator</h1>
-              <label htmlFor="api-key" className="small-label">API Key:</label>
-              <input 
-                type="text" 
-                id="api-key" 
-                name="api-key" 
-                value={api_key} 
-                onChange={updateAPIKey}
-                className="small-input"
-              />
-              <select id="llm" name="llm" onChange={onLLMChange} className="small-select">
-                <option value="Anthropic">Anthropic</option>
-                <option value="OpenAI">OpenAI</option>
-                <option value="Groq">Groq</option>
-              </select>
-            </div>
+              {/* Header section for Generator */}
+              <div className="header-container">
+                <h1 className="small-title">Generator</h1>
+                <label htmlFor="api-key" className="small-label">API Key:</label>
+                <input 
+                  type="text" 
+                  id="api-key" 
+                  name="api-key" 
+                  value={api_key} 
+                  onChange={updateAPIKey}
+                  className="small-input"
+                />
+                <select id="llm" name="llm" onChange={onLLMChange} className="small-select">
+                  <option value="Anthropic">Anthropic</option>
+                  <option value="OpenAI">OpenAI</option>
+                  <option value="Groq">Groq</option>
+                </select>
+              </div>
               <ClassEditor 
-                llm ={llm}
+                llm={llm}
                 api_key={api_key}
                 currentVersionId={currentVersionId}
                 versions={versions}
                 setVersions={setVersions}
                 classcode={classcode} 
                 setClassCode={setClassCode}
-                onRunClassCode={handleRunClassCode} // Pass the handler
+                onRunClassCode={handleRunClassCode}
               />
             </div>
   
             <div className="code-editor-container">
-            <div className="header-container">
-            <h1 className="custom-title">
-              {loadList.split('\n').map((line, index) => (
-                <React.Fragment key={index}>
-                  {line}
-                  <br />
-                </React.Fragment>
-              ))}
-            </h1>
-          </div>
+              <div className="header-container">
+                <h1 className="custom-title">
+                  {loadList.split('\n').map((line, index) => (
+                    <React.Fragment key={index}>
+                      {line}
+                      <br />
+                    </React.Fragment>
+                  ))}
+                </h1>
+                <div className="button-container">
+                  <button onClick={handleDownloadDB} className="control-button-download">{buttonText}</button>
+                  <button onClick={handleUploadDB} className="control-button">Load DB</button>
+                  <button onClick={handleEmptyDB} className="control-button">Empty DB</button>
+                </div>
+              </div>
               <CustomCodeEditor
-                llm ={llm}
+                llm={llm}
                 classcode={classcode}
                 setClassCode={setClassCode}
                 api_key={api_key}
@@ -206,15 +254,15 @@ const App: React.FC = () => {
                 currentVersionId={currentVersionId}
                 versions={versions}
                 setVersions={setVersions}
-                onRunUserCode={handleRunUserCode} // Pass the handler
+                onRunUserCode={handleRunUserCode}
               />
             </div>
   
             <ResultViewer  
               usercode={versions.find(version => version.id === currentVersionId)!.usercode}
-              api_key = {api_key}
-              llm = {llm}
-              classcode={classcode} // Pass classcode to ResultViewer 
+              api_key={api_key}
+              llm={llm}
+              classcode={classcode}
               currentVersionId={currentVersionId}
               versions={versions}
               setVersions={setVersions}

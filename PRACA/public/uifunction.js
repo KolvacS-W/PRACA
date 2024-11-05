@@ -645,7 +645,8 @@ function saveInstance(inst) {
       ObjectDatabase.addInstance(inst);
     }
     // modify the download button to show the number of classes and instances
-    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+    // document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+    updateButtonText();
   }
 
   function saveClass(compClass) {
@@ -653,44 +654,11 @@ function saveInstance(inst) {
       ObjectDatabase.addClass(compClass);
     }
     // modify the download button to show the number of classes and instances
-    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+    // document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+    updateButtonText();
   }
 
-  function downloadDB() {
-    console.log('called download DB');
-
-    // Get the JSON string from ObjectDatabase
-    const text = ObjectDatabase.getJSONString();
-    const name = "cspy-db.json";
-
-    // Ensure the text is valid and not empty
-    if (text) {
-        try {
-            // Create a Blob with the JSON string
-            const blob = new Blob([text], { type: 'application/json' });
-
-            // Create a link element
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = name;
-
-            // Append the link to the body and click it to initiate the download
-            document.body.appendChild(link);
-            console.log('document.body', document.body)
-            link.click();
-
-            // Remove the link from the document
-            document.body.removeChild(link);
-            console.log('File downloaded successfully.');
-        } catch (error) {
-            console.error('Error during file download:', error);
-        }
-    } else {
-        console.error('Failed to generate JSON string for download.');
-    }
-}
-
-function uploadDB() {
+  function uploadDB() {
     loadCspyScript(() => {
         console.log('cspy.js loaded successfully.');
         // Create a hidden file input element
@@ -732,6 +700,39 @@ function uploadDB() {
         fileInput.click();
     })
 
+  }
+  function downloadDB() {
+    console.log('called download DB');
+
+    // Get the JSON string from ObjectDatabase
+    const text = ObjectDatabase.getJSONString();
+    const name = "cspy-db.json";
+
+    // Ensure the text is valid and not empty
+    if (text) {
+        try {
+            // Create a Blob with the JSON string
+            const blob = new Blob([text], { type: 'application/json' });
+
+            // Create a link element
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+
+            // Append the link to the body and click it to initiate the download
+            document.body.appendChild(link);
+            console.log('document.body', document.body)
+            link.click();
+
+            // Remove the link from the document
+            document.body.removeChild(link);
+            console.log('File downloaded successfully.');
+        } catch (error) {
+            console.error('Error during file download:', error);
+        }
+    } else {
+        console.error('Failed to generate JSON string for download.');
+    }
 }
 
 function emptyDB(){
@@ -746,9 +747,30 @@ function emptyDB(){
     ObjectDatabase.id = 0; // Reset the ID counter
 
     // modify the download button to show the number of classes and instances
-    document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
-
+    // document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
+    updateButtonText();
     })
 }
 
+function updateButtonText() {
+    // Send a message to the parent window with the updated counts
+    window.parent.postMessage(
+      {
+        type: 'UPDATE_BUTTON_TEXT',
+        classCount: ObjectDatabase.classNames.length,
+        instanceCount: ObjectDatabase.instanceNames.length,
+      },
+      '*'
+    );
+  }
+
+window.addEventListener('message', function(event) {
+    if (event.data.type === 'DOWNLOAD_DB') {
+      downloadDB();
+    } else if (event.data.type === 'UPLOAD_DB') {
+      uploadDB();
+    } else if (event.data.type === 'EMPTY_DB') {
+      emptyDB();
+    }
+  });
 

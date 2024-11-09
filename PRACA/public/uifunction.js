@@ -1,18 +1,20 @@
 //for intitial upload, where cspy is not loaded yet
 // Function to dynamically load cspy.js
-function loadCspyScript(callback) {
-    // Check if the script is already loaded
-    if (!document.querySelector(`script[src="/cspy.js"]`)) {
-      const script = document.createElement('script');
-      script.src = '/cspy.js';
-      script.type = 'text/javascript';
-      script.onload = callback; // Call the callback function once the script is loaded
-      document.head.appendChild(script);
-    } else {
-      // If the script is already loaded, just call the callback
-      callback();
-    }
-  }
+import { CSPY, ObjectDatabase} from '../src/lib/cspy/CSPY.js'
+import { AnthropicGen } from '../src/lib/cspy/GenAPIs.js'; // Import directly from GenAPIs.js
+// function loadCspyScript(callback) {
+//     // Check if the script is already loaded
+//     if (!document.querySelector(`script[src="../lib/cspy.js"]`)) {
+//       const script = document.createElement('script');
+//       script.src = '../src/lib/cspy/CSPY.js';
+//       script.type = 'text/javascript';
+//       script.onload = callback; // Call the callback function once the script is loaded
+//       document.head.appendChild(script);
+//     } else {
+//       // If the script is already loaded, just call the callback
+//       callback();
+//     }
+//   }
 
 //functions to set llm and apikey
 async function initialize_LLM() {
@@ -45,7 +47,7 @@ async function initialize_LLM() {
 
 let llm, api_key; // Declare variables in a wider scope
 
-async function initializeAndSetApiKey() {
+export async function initializeAndSetApiKey() {
 
     // Call the initialize_LLM function and handle the returned values
     await initialize_LLM().then((result) => {
@@ -170,7 +172,7 @@ if (!window.whole_canvas) {
     window.whole_canvas = whole_canvas;
 }
 
-function setBackground(color) {
+export function setBackground(color) {
   window.canvas = new whole_canvas(color)
 }
 
@@ -188,7 +190,7 @@ function renderSingleSvgwithLayout(coordinatesArray, svgstring) {
 
 
 //render a single svg
-function renderSvg(svgstring, coord = { x: 50, y: 50 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
+export function renderSvg(svgstring, coord = { x: 50, y: 50 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
   placeSvg(svgstring, window.canvas, coord, scale, tl, tr, bl, br)
 }
 
@@ -228,8 +230,8 @@ function placeSvg(svgstring, canvas, coord = {
 }, scale = 1, tl = null, tr = null, bl = null, br = null) {
     const content = sanitize_removeattributes(svgstring);
 
-    console.log('before:', svgstring)
-    console.log('after:', content)
+    // console.log('before:', svgstring)
+    // console.log('after:', content)
 
     // Create a DOMParser to parse the SVG content
     const parser = new DOMParser();
@@ -608,7 +610,7 @@ function calculateSimilarityTransform(srcPts, dstPts, scale) {
     return matrix;
 }
 
-async function saveSVG(svgString, name = '') {
+export async function saveSVG(svgString, name = '') {
     // Logic to name instance and store its svg code
     if (!name) {
         name = 'newobj' + window.newobjID.toString(); // Default to "newobj" + newobjID
@@ -640,7 +642,7 @@ async function saveSVG(svgString, name = '') {
     });
 }
 
-function saveInstance(inst) {
+export function saveInstance(inst) {
     if (inst) {
       ObjectDatabase.addInstance(inst);
     }
@@ -649,7 +651,7 @@ function saveInstance(inst) {
     updateButtonText();
   }
 
-  function saveClass(compClass) {
+export  function saveClass(compClass) {
     if (compClass) {
       ObjectDatabase.addClass(compClass);
     }
@@ -659,8 +661,6 @@ function saveInstance(inst) {
   }
 
   function uploadDB() {
-    loadCspyScript(() => {
-        console.log('cspy.js loaded successfully.');
         // Create a hidden file input element
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
@@ -676,8 +676,10 @@ function saveInstance(inst) {
             if (file) {
                 try {
                     const text = await file.text();
-                    console.log('ObjectDatabase', ObjectDatabase)
+                    // console.log('text1', text)
                     ObjectDatabase.parseJSONString(text);
+                    // console.log('text2', text)
+                    console.log('ObjectDatabase', ObjectDatabase)
                     var loadList = "";
                     var objects = ObjectDatabase.getObjects();
                     // loop over key/value pairs
@@ -698,7 +700,6 @@ function saveInstance(inst) {
 
         // Trigger file selection dialog
         fileInput.click();
-    })
 
   }
   function downloadDB() {
@@ -737,8 +738,6 @@ function saveInstance(inst) {
 
 function emptyDB(){
 
-    loadCspyScript(() => {
-    console.log('cspy.js loaded successfully.');
     // Clear all arrays
     ObjectDatabase.classes = [];
     ObjectDatabase.instances = [];
@@ -749,7 +748,7 @@ function emptyDB(){
     // modify the download button to show the number of classes and instances
     // document.getElementById("download-db").innerHTML = "Download DB (" + ObjectDatabase.classNames.length + " classes, " + ObjectDatabase.instanceNames.length + " instances)";
     updateButtonText();
-    })
+
 }
 
 function updateButtonText() {

@@ -1,6 +1,3 @@
-await initializeAndSetApiKey().then(({ llm, api_key }) => {
-    console.log('set llm and key', llm, api_key)
-});
 
 setBackground('pink')
 

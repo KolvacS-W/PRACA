@@ -1,17 +1,4 @@
-// Function to dynamically load an external script
-function loadScript(src, callback) {
-    const existingScript = document.querySelector(`script[src="${src}"]`);
-    
-    if (!existingScript) {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = callback;
-        document.head.appendChild(script);
-    } else {
-        callback(); // Script already loaded, just execute the callback
-    }
-}
-
+//main.js will construct the real code scripts for creating usercontents, importing uifunctions and cspy lib
 // Event listener for messages
 window.addEventListener('message', function(event) {
     if (event.data.type === 'EXECUTE_CLASSCODE') {
@@ -24,17 +11,32 @@ window.addEventListener('message', function(event) {
             return;
         }
 
-        const combinedCode = `${window._classcode}\n${event.data.usercode}`;
-
-        // Load external script and then execute the combined code
-        loadScript('/cspy.js', function() {
-            // Create a script element to execute the combined code
-            const script = document.createElement('script');
-            script.type = 'module';
-            script.textContent = combinedCode;
-            console.log('Script created and executed', script);
-            document.body.appendChild(script);
+        const combinedCode = `
+        import { CSPY, CSPYCompiler, ObjectDatabase } from '../src/lib/cspy/CSPY.js';\n
+        import {Input, ComputedInput, RandomChoiceInput, LLMChoiceInput, 
+            ImageInput, StaticInput, ContextInput} from "../src/lib/cspy/Input.js"
+        import {AnthropicGen, OpenAIGen, GroqGen} from "../src/lib/cspy/GenAPIs.js"
+        import {Prompt, TemplatePrompt} from "../src/lib/cspy/Prompt.js"
+        ${window._classcode}\n
+        import {initializeAndSetApiKey, setBackground, saveSVG, saveInstance, saveClass, renderSvg} from './uifunction.js'
+        await initializeAndSetApiKey().then(({ llm, api_key }) => {
+            console.log('set llm and key', llm, api_key)
         });
+        ${event.data.usercode}`;
+        const script = document.createElement('script');
+        script.type = 'module';
+        script.textContent = combinedCode;
+        document.body.appendChild(script);
+        console.log('Script created and executed', document.toString());
+        // Load external script and then execute the combined code
+        // loadScript('../src/lib/cspy/CSPY.js', function() {
+        //     // Create a script element to execute the combined code
+        //     const script = document.createElement('script');
+        //     script.type = 'module';
+        //     script.textContent = combinedCode;
+        //     document.body.appendChild(script);
+        //     console.log('Script created and executed', document.toString());
+        // });
     }
 });
 

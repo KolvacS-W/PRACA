@@ -12,11 +12,11 @@ window.addEventListener('message', function(event) {
         }
 
         const combinedCode = `
-        import { CSPY, CSPYCompiler, ObjectDatabase } from '../src/lib/cspy/CSPY.js';\n
+        import { CSPY, CSPYCompiler, ObjectDatabase } from '../src/lib/cspy/index.js';\n
         import {Input, ComputedInput, RandomChoiceInput, LLMChoiceInput, 
-            ImageInput, StaticInput, ContextInput} from "../src/lib/cspy/Input.js"
-        import {AnthropicGen, OpenAIGen, GroqGen} from "../src/lib/cspy/GenAPIs.js"
-        import {Prompt, TemplatePrompt} from "../src/lib/cspy/Prompt.js"
+            ImageInput, StaticInput, ContextInput} from "../src/lib/cspy/index.js"
+        import {AnthropicGen, OpenAIGen, GroqGen} from "../src/lib/cspy/index.js"
+        import {Prompt, TemplatePrompt} from "../src/lib/cspy/index.js"
         ${window._classcode}\n
         import {initializeAndSetApiKey, setBackground, saveSVG, saveInstance, saveClass, renderSvg} from './uifunction.js'
         await initializeAndSetApiKey().then(({ llm, api_key }) => {

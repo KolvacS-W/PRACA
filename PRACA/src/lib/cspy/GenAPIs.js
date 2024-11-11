@@ -195,6 +195,64 @@ export class AnthropicGen {
             callback(genresp);
         }
     }
+
+    // Inside AnthropicGen class
+    async processImageDataURL(prompt, imageDataURL, callback, llm = undefined) {
+        if (!AnthropicGen.apiKey) {
+            throw new Error("AnthropicGen API key not set");
+        }
+
+        if (!llm) {
+            llm = AnthropicGen.model;
+        }
+
+        // Extract base64 data from the data URL
+        const base64Data = imageDataURL.replace(/^data:image\/(png|jpeg);base64,/, '');
+
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "x-api-key": AnthropicGen.apiKey,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+                "anthropic-dangerous-direct-browser-access": "true",
+            },
+            body: JSON.stringify({
+                model: llm.model,
+                max_tokens: 1024,
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/png",
+                                    "data": base64Data,
+                                }
+                            },
+                            {
+                                "type": "text",
+                                "text": prompt
+                            }
+                        ],
+                    },
+                ],
+            }),
+        });
+
+        try {
+            const data = await response.json();
+            const genresp = data.content[0].text;
+            if (callback) {
+                callback(genresp);
+            }
+        } catch (err) {
+            console.error('Error processing image with Anthropic:', err);
+        }
+    }
+
 }
 
 export class OpenAIGen {

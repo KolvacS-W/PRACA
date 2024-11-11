@@ -1,3 +1,4 @@
+import { SVGGen } from "./index.js";
 /**
  * @classdesc a basic input class template. Not used directly.
  * @class
@@ -770,9 +771,10 @@ export class ContextInput extends Input {
      * @param {object} val - the context
      * @returns {ContextInput}
      */
-    static context(val) {
+    static context(val, annotate = false) {
         var toRet = new ContextInput();
         toRet.setParameter('context', val);
+        toRet.setParameter('annotate', annotate);
         return (toRet);
     }
 
@@ -783,6 +785,7 @@ export class ContextInput extends Input {
     toJSON() {
         var toRet = super.toJSON();
         toRet['context'] = this.params['context'];
+        toRet['annotate'] = this.params['annotate']
         return (toRet);
     }
 
@@ -801,6 +804,7 @@ export class ContextInput extends Input {
             'explanation': inJSON.explanation,
             'type': inJSON.type,
             'context': inJSON.context,
+            'annotate': inJSON.annotate,
             'variableName': inJSON.variableName
         });
         return (toRet);

@@ -1,8 +1,9 @@
 
-import {Input, ComputedInput, RandomChoiceInput, LLMChoiceInput, 
-    ImageInput, StaticInput, ContextInput} from "./Input.js"
-import {AnthropicGen, OpenAIGen, GroqGen} from "./GenAPIs.js"
-import {Prompt, TemplatePrompt} from "./Prompt.js"
+// CSPY.js
+import { AnthropicGen, OpenAIGen, GroqGen } from "./index.js";
+import { Input, ComputedInput, RandomChoiceInput, LLMChoiceInput, ImageInput, StaticInput, ContextInput } from "./index.js";
+import { Prompt, TemplatePrompt } from "./index.js";
+
 
 // basic CSPY class that we will extend
 export class CSPY {
@@ -134,6 +135,7 @@ export class SVGGen {
     makeVariant(params) {
         // dummy
     }
+
 }
 
 /**
@@ -142,7 +144,7 @@ export class SVGGen {
 export class CSPYCompiler {
 
 
-    static logEnable = false;
+    static logEnable = true;
 
     static strFunc = String.prototype.interpolate = function (params) {
         const names = Object.keys(params);
@@ -158,6 +160,11 @@ export class CSPYCompiler {
         if (CSPYCompiler.logEnable) {
             console.log(msg);
         }
+    }
+
+    async annotateFunction(val) {
+        // Implement the function for annotations as needed
+        return `Annotated: ${val}`;
     }
 
     /**
@@ -188,7 +195,7 @@ export class CSPYCompiler {
 
                 await this.calcComputedInputs(props);
 
-                props.forEach(prop => {
+                for (const prop of props){
                     var tProp = this.inputs[prop];
                     if (!tProp) {
                         return;
@@ -203,14 +210,19 @@ export class CSPYCompiler {
                         if (!contextPromptString) {
                             contextPromptString = "";
                         }
-                        contextPromptString += `\n\nUse the following SVG as a starting point:\n ${val}\n`;
+                        if (tProp.params.annotate) {
+                            var annotatedContext = await this.annotateContext(val)
+                            contextPromptString += `\n\nUse the following SVG with additional annotations as a starting point:\n ${annotatedContext}\n`;
+                        } else {
+                            contextPromptString += `\n\nUse the following SVG as a starting point:\n ${val}\n`;
+                        }
                     } else if (tProp instanceof ComputedInput) {
 
                         propPromptString += `The ${prop} should be ${val}\n`;
                     } else {
                         CSPYCompiler.log(prop, typeof tProp);
                     }
-                });
+                };
 
 
 
@@ -229,21 +241,153 @@ export class CSPYCompiler {
 
 
                 CSPYCompiler.log(prompt);
-                if (this.llm.llm == 'OpenAI') {
-                    var genresp = await OpenAIGen.getInstance().generate(prompt, (resp) => {
+                const genresp = await this.generateLLMResponse(prompt);
+                return super.getSVG(callback);
+
+            }
+
+            async generateLLMResponse(prompt) {
+                if (this.llm.llm === 'OpenAI') {
+                    return OpenAIGen.getInstance().generate(prompt, (resp) => {
                         this.setSVG(resp);
                     }, this.llm);
-                } else if (this.llm.llm == "Groq") {
-                    var genresp = await GroqGen.getInstance().generate(prompt, (resp) => {
+                } else if (this.llm.llm === "Groq") {
+                    return GroqGen.getInstance().generate(prompt, (resp) => {
                         this.setSVG(resp);
                     }, this.llm);
                 } else {
-                    var genresp = await AnthropicGen.getInstance().generate(prompt, (resp) => {
+                    return AnthropicGen.getInstance().generate(prompt, (resp) => {
                         this.setSVG(resp);
                     }, this.llm);
                 }
-                return super.getSVG(callback);
             }
+        
+            async renderTextToImage(textContent) {
+                return new Promise((resolve, reject) => {
+                    // Create a canvas element
+                    const canvas = document.createElement('canvas');
+                    const width = 800;
+                    const height = 600;
+                    canvas.width = width;
+                    canvas.height = height;
+            
+                    const context = canvas.getContext('2d');
+            
+                    // Set background color (optional)
+                    context.fillStyle = '#FFFFFF';
+                    context.fillRect(0, 0, width, height);
+            
+                    // Set text properties
+                    context.fillStyle = '#000000';
+                    context.font = '20px Arial';
+                    context.textBaseline = 'top';
+            
+                    // Split the text into lines to fit the canvas
+                    const lines = this.wrapText(context, textContent, width - 40);
+            
+                    // Draw the text
+                    let yPosition = 20;
+                    for (const line of lines) {
+                        context.fillText(line, 20, yPosition);
+                        yPosition += 30; // Line height
+                    }
+            
+                    // Convert the canvas to a data URL
+                    const imageDataURL = canvas.toDataURL('image/png');
+            
+                    resolve(imageDataURL);
+                });
+            }
+            
+            // Helper function to wrap text
+            wrapText(context, text, maxWidth) {
+                const words = text.split(' ');
+                let lines = [];
+                let currentLine = '';
+            
+                for (const word of words) {
+                    const testLine = currentLine + word + ' ';
+                    const metrics = context.measureText(testLine);
+                    const testWidth = metrics.width;
+            
+                    if (testWidth > maxWidth && currentLine !== '') {
+                        lines.push(currentLine.trim());
+                        currentLine = word + ' ';
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                if (currentLine) {
+                    lines.push(currentLine.trim());
+                }
+                return lines;
+            }
+            
+            
+
+            async annotateContext(val) {
+                let llmResponse1 = '';
+
+                // First, pass 'val' as a prompt to the LLM
+                const prompt1 = `Given the following svg code, make each group of different elements have distinct color. Do not use color code, but use text ("light green", "deep blue") to add colors. Color the follosing svg code: \n\n${val}\n\nMake sure do not include anything other than the modified svg code in your response.`;
+
+                if (this.llm.llm === 'OpenAI') {
+                    // Generate annotations using OpenAI
+                    llmResponse1 = await new Promise((resolve, reject) => {
+                        OpenAIGen.getInstance().generate(prompt1, (resp) => {
+                            resolve(resp);
+                        }, this.llm);
+                    });
+
+                    // Render the annotations as an image and save it locally
+                    const imageFilename = 'annotated_image.png';
+                    await this.renderTextToImage(llmResponse1, imageFilename);
+
+                    // Create another prompt with the image as input
+                    const prompt2 = 'Return the :';
+
+                    let llmResponse2 = '';
+                    // Process the image with OpenAI
+                    llmResponse2 = await new Promise((resolve, reject) => {
+                        OpenAIGen.getInstance().processImage(prompt2, imageFilename, (resp) => {
+                            resolve(resp);
+                        }, this.llm);
+                    });
+
+                    // Return the final result
+                    return llmResponse2;
+
+                } else if (this.llm.llm === 'Anthropic') {
+                    CSPYCompiler.log('llm: Anthropic')
+                    // Generate annotations using Anthropic
+                    llmResponse1 = await new Promise((resolve, reject) => {
+                        AnthropicGen.getInstance().generate(prompt1, (resp) => {
+                            console.log('llmResponse1', resp)
+                            resolve(resp);
+                        }, this.llm);
+                    });
+                    // Render the annotations as an image and get the data URL
+                    const imageDataURL = await this.renderTextToImage(llmResponse1);
+
+                    // Create another prompt with the image as input
+                    const prompt2 = 'Look at the given svg image, tell me in detail: what color represent what part of the object? example response: lightgreen represent eyes, darkgreen represent nose, .....';
+            ;
+
+                    let llmResponse2 = '';
+                    // Process the image with Anthropic
+                    llmResponse2 = await new Promise((resolve, reject) => {
+                        AnthropicGen.getInstance().processImageDataURL(prompt2, imageDataURL, (resp) => {
+                            resolve(resp);
+                        }, this.llm);
+                    });
+
+                    // Return the final result
+                    return llmResponse2;
+                } else {
+                    throw new Error(`Unsupported LLM: ${this.llm.llm}`);
+                }
+            }
+
 
             innerUpdate(inJSON) {
                 // should not be called except for reconstitution
@@ -669,6 +813,7 @@ export class CSPYCompiler {
         var tempInst = new inpr();
         // read all properties of tempInst and load into an array
         var props = Object.getOwnPropertyNames(tempInst);
+        
         if (props.length == 0) {
             props = Object.getOwnPropertyNames(inpr);
         }

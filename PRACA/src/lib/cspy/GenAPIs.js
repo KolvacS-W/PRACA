@@ -1,3 +1,4 @@
+
 export class AnthropicGen {
 
     // make as singleton pattern
@@ -54,7 +55,7 @@ export class AnthropicGen {
                 .then(response => response.text())
                 .then(key => {
                     AnthropicGen.apiKey = key.trim();
-                    CSPYCompiler.log(AnthropicGen.apiKey);
+                    console.log(AnthropicGen.apiKey);
                     return;
                 })
                 .catch(err => {
@@ -64,7 +65,7 @@ export class AnthropicGen {
         } catch (err) {
 
         }
-        CSPYCompiler.log(AnthropicGen.apiKey);
+        console.log(AnthropicGen.apiKey);
     }
 
     /**
@@ -95,7 +96,7 @@ export class AnthropicGen {
         if (!AnthropicGen.apiKey) {
             throw new Error("AnthropicGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + AnthropicGen.model);
+        //console.log("using model: " + AnthropicGen.model);
 
         if (!llm) {
             llm = AnthropicGen.model;
@@ -111,7 +112,7 @@ export class AnthropicGen {
             },
             body: JSON.stringify({
                 model: llm.model,
-                max_tokens: 1024,
+                max_tokens: 4096,
                 messages: [
                     {
                         role: "user",
@@ -144,7 +145,7 @@ export class AnthropicGen {
         if (!AnthropicGen.apiKey) {
             throw new Error("AnthropicGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + AnthropicGen.model);
+        //console.log("using model: " + AnthropicGen.model);
 
         if (!llm) {
             llm = AnthropicGen.model;
@@ -185,7 +186,7 @@ export class AnthropicGen {
             try {
                 var json = await response.json();
                 genresp = json.content[0].text;
-                CSPYCompiler.log(genresp);
+                console.log(genresp);
                 messages.push({ role: "assistant", content: [{ type: "text", text: genresp },], });
             } catch (err) {
                 console.log(err, json);
@@ -310,7 +311,7 @@ export class OpenAIGen {
                 .then(response => response.text())
                 .then(key => {
                     OpenAIGen.apiKey = key.trim();
-                    CSPYCompiler.log(OpenAIGen.apiKey);
+                    console.log(OpenAIGen.apiKey);
                     return;
                 })
                 .catch(err => {
@@ -320,7 +321,7 @@ export class OpenAIGen {
         } catch (err) {
 
         }
-        CSPYCompiler.log(OpenAIGen.apiKey);
+        console.log(OpenAIGen.apiKey);
     }
 
     /**
@@ -351,7 +352,7 @@ export class OpenAIGen {
         if (!OpenAIGen.apiKey) {
             throw new Error("OpenAIGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + OpenAIGen.model);
+        //console.log("using model: " + OpenAIGen.model);
 
         if (!llm) {
             llm = OpenAIGen.model;
@@ -414,7 +415,7 @@ export class OpenAIGen {
         if (!OpenAIGen.apiKey) {
             throw new Error("OpenAIGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + OpenAIGen.model);
+        //console.log("using model: " + OpenAIGen.model);
 
         if (!llm) {
             llm = OpenAIGen.model;
@@ -475,7 +476,7 @@ export class OpenAIGen {
         if (!OpenAIGen.apiKey) {
             throw new Error("OpenAIGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + OpenAIGen.model);
+        //console.log("using model: " + OpenAIGen.model);
 
         if (!llm) {
             llm = OpenAIGen.model;
@@ -514,7 +515,7 @@ export class OpenAIGen {
             try {
                 var json = await response.json();
                 genresp = json.choices[0].message.content;
-                CSPYCompiler.log(genresp);
+                console.log(genresp);
                 messages.push({ role: "assistant", content: [{ type: "text", text: genresp },], });
             } catch (err) {
                 console.log(err, json);
@@ -593,7 +594,7 @@ export class GroqGen {
                 .then(response => response.text())
                 .then(key => {
                     GroqGen.apiKey = key.trim();
-                    CSPYCompiler.log(GroqGen.apiKey);
+                    console.log(GroqGen.apiKey);
                     return;
                 })
                 .catch(err => {
@@ -603,7 +604,7 @@ export class GroqGen {
         } catch (err) {
 
         }
-        CSPYCompiler.log(GroqGen.apiKey);
+        console.log(GroqGen.apiKey);
     }
 
     /**
@@ -638,7 +639,7 @@ export class GroqGen {
         if (!llm) {
             llm = GroqGen.model;
         }
-        //CSPYCompiler.log("using model: " + GroqGen.model);
+        //console.log("using model: " + GroqGen.model);
 
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
@@ -696,7 +697,7 @@ export class GroqGen {
         if (!GroqGen.apiKey) {
             throw new Error("GroqGen API key not set");
         }
-        //CSPYCompiler.log("using model: " + GroqGen.model);
+        //console.log("using model: " + GroqGen.model);
 
         if (!llm) {
             llm = GroqGen.model;
@@ -736,7 +737,7 @@ export class GroqGen {
                 var json = await response.json();
                 console.log(json);
                 genresp = json.choices[0].message.content;
-                CSPYCompiler.log(genresp);
+                console.log(genresp);
                 messages.push({ role: "assistant", content: genresp });
                 console.log(messages);
             } catch (err) {

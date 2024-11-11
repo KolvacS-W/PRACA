@@ -162,10 +162,10 @@ export class CSPYCompiler {
         }
     }
 
-    async annotateFunction(val) {
-        // Implement the function for annotations as needed
-        return `Annotated: ${val}`;
-    }
+    // async annotateFunction(val) {
+    //     // Implement the function for annotations as needed
+    //     return `Annotated: ${val}`;
+    // }
 
     /**
      * 
@@ -212,7 +212,7 @@ export class CSPYCompiler {
                         }
                         if (tProp.params.annotate) {
                             var annotatedContext = await this.annotateContext(val)
-                            contextPromptString += `\n\nUse the following SVG with additional annotations as a starting point:\n ${annotatedContext}\n`;
+                            contextPromptString += `\n\nGenerate the svg starting with the existing svg: \n${val} and these supporting annotations matching code and visual contents: ${annotatedContext}\n`;
                         } else {
                             contextPromptString += `\n\nUse the following SVG as a starting point:\n ${val}\n`;
                         }
@@ -262,44 +262,109 @@ export class CSPYCompiler {
                 }
             }
         
-            async renderTextToImage(textContent) {
+            // async renderTextToImage(textContent) {
+            //     return new Promise((resolve, reject) => {
+            //         // Create a canvas element
+            //         const canvas = document.createElement('canvas');
+            //         const width = 400;
+            //         const height = 400;
+            //         canvas.width = width;
+            //         canvas.height = height;
+            
+            //         const context = canvas.getContext('2d');
+            
+            //         // Set background color (optional)
+            //         context.fillStyle = '#FFFFFF';
+            //         context.fillRect(0, 0, width, height);
+            
+            //         // Set text properties
+            //         context.fillStyle = '#000000';
+            //         context.font = '20px Arial';
+            //         context.textBaseline = 'top';
+            
+            //         // Split the text into lines to fit the canvas
+            //         const lines = this.wrapText(context, textContent, width - 40);
+            
+            //         // Draw the text
+            //         let yPosition = 20;
+            //         for (const line of lines) {
+            //             context.fillText(line, 20, yPosition);
+            //             yPosition += 30; // Line height
+            //         }
+            
+            //         // Convert the canvas to a data URL
+            //         const imageDataURL = canvas.toDataURL('image/png');
+
+            //         // Save the image by triggering a download
+            //         const link = document.createElement('a');
+            //         link.href = imageDataURL;
+            //         link.download = 'colored svg';
+            //         document.body.appendChild(link);
+            //         link.click();
+            //         document.body.removeChild(link);
+            
+            //         resolve(imageDataURL);
+            //     });
+            // }
+            
+            // Helper function to wrap text
+
+            async renderTextToImage(svgContent, filename = 'annotated_image.png') {
                 return new Promise((resolve, reject) => {
-                    // Create a canvas element
-                    const canvas = document.createElement('canvas');
-                    const width = 800;
-                    const height = 600;
-                    canvas.width = width;
-                    canvas.height = height;
+                    try {
+                        // Create a Blob from the SVG content
+                        const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+                        const DOMURL = window.URL || window.webkitURL || window;
+                        const svgUrl = DOMURL.createObjectURL(svgBlob);
             
-                    const context = canvas.getContext('2d');
+                        const img = new Image();
+                        img.onload = function () {
+                            // Prepare the canvas for rendering
+                            const canvas = document.createElement('canvas');
+                            canvas.width = img.width;
+                            canvas.height = img.height;
+                            const context = canvas.getContext('2d');
             
-                    // Set background color (optional)
-                    context.fillStyle = '#FFFFFF';
-                    context.fillRect(0, 0, width, height);
+                            // Draw the SVG image onto the canvas
+                            context.drawImage(img, 0, 0);
             
-                    // Set text properties
-                    context.fillStyle = '#000000';
-                    context.font = '20px Arial';
-                    context.textBaseline = 'top';
+                            // Free up memory by revoking the object URL
+                            DOMURL.revokeObjectURL(svgUrl);
             
-                    // Split the text into lines to fit the canvas
-                    const lines = this.wrapText(context, textContent, width - 40);
+                            // Convert the canvas to a data URL for the image
+                            const imageDataURL = canvas.toDataURL('image/png');
             
-                    // Draw the text
-                    let yPosition = 20;
-                    for (const line of lines) {
-                        context.fillText(line, 20, yPosition);
-                        yPosition += 30; // Line height
+                            // Save the image by triggering a download
+                            const link = document.createElement('a');
+                            link.href = imageDataURL;
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+            
+                            // Resolve with the image data URL
+                            resolve(imageDataURL);
+                        };
+            
+                        img.onerror = function (e) {
+                            // Provide detailed error information
+                            console.error('Error loading SVG image:', e);
+                            console.error('SVG content:', svgContent);
+                            reject(new Error('Failed to load SVG image. Check SVG syntax and content.'));
+                        };
+            
+                        // Set the source of the image to the SVG Blob URL
+                        img.src = svgUrl;
+                    } catch (error) {
+                        console.error('Error in renderTextToImage function:', error);
+                        reject(error);
                     }
-            
-                    // Convert the canvas to a data URL
-                    const imageDataURL = canvas.toDataURL('image/png');
-            
-                    resolve(imageDataURL);
                 });
             }
             
-            // Helper function to wrap text
+            
+            
+            
             wrapText(context, text, maxWidth) {
                 const words = text.split(' ');
                 let lines = [];
@@ -329,7 +394,7 @@ export class CSPYCompiler {
                 let llmResponse1 = '';
 
                 // First, pass 'val' as a prompt to the LLM
-                const prompt1 = `Given the following svg code, make each group of different elements have distinct color. Do not use color code, but use text ("light green", "deep blue") to add colors. Color the follosing svg code: \n\n${val}\n\nMake sure do not include anything other than the modified svg code in your response.`;
+                const prompt1 = `Modify the following svg code, make each group of different elements have distinct color. Do not use color code, but use text ("green", "blue") to add colors. Try to use completely distinct colors instead of similar colors. Make sure the color names you use are simple and are all formal html color names. Color the following svg code: \n\n${val}\n\nMake sure do not include anything other than the modified svg code in your response.`;
 
                 if (this.llm.llm === 'OpenAI') {
                     // Generate annotations using OpenAI
@@ -370,8 +435,7 @@ export class CSPYCompiler {
                     const imageDataURL = await this.renderTextToImage(llmResponse1);
 
                     // Create another prompt with the image as input
-                    const prompt2 = 'Look at the given svg image, tell me in detail: what color represent what part of the object? example response: lightgreen represent eyes, darkgreen represent nose, .....';
-            ;
+                    const prompt2 = 'Look at the given svg image, tell me in detail: what color represent what part of the object? example response: lightgreen represent eyes, darkgreen represent nose, ..... Only include the colors and the represented contents in the response.';
 
                     let llmResponse2 = '';
                     // Process the image with Anthropic
@@ -380,9 +444,23 @@ export class CSPYCompiler {
                             resolve(resp);
                         }, this.llm);
                     });
+                    console.log(llmResponse2)
+
+                    // Create another prompt with the image as input
+                    const prompt3 = 'Given a svg code with different colors for different elements: '+llmResponse1+' , and the information telling you the specific colors for each visual content: '+llmResponse2 + ' , return the specific svg element code for each visual content. Remove all the color attributes of element code in your response. Example response: eyes: element code.....; ears: element code.....';
+                    ;
+
+                    let llmResponse3 = '';
+                    // Process the image with Anthropic
+                    llmResponse3 = await new Promise((resolve, reject) => {
+                        AnthropicGen.getInstance().generate(prompt3, (resp) => {
+                            console.log('llmResponse3', resp)
+                            resolve(resp);
+                        }, this.llm);
+                    });
 
                     // Return the final result
-                    return llmResponse2;
+                    return llmResponse3;
                 } else {
                     throw new Error(`Unsupported LLM: ${this.llm.llm}`);
                 }

@@ -1,7 +1,7 @@
 //for intitial upload, where cspy is not loaded yet
 // Function to dynamically load cspy.js
-import { CSPY, ObjectDatabase} from '../src/lib/cspy/CSPY.js'
-import { AnthropicGen } from '../src/lib/cspy/GenAPIs.js'; // Import directly from GenAPIs.js
+import { CSPY, ObjectDatabase} from '../src/lib/cspy/index.js'
+import { AnthropicGen } from '../src/lib/cspy/index.js'; // Import directly from GenAPIs.js
 // function loadCspyScript(callback) {
 //     // Check if the script is already loaded
 //     if (!document.querySelector(`script[src="../lib/cspy.js"]`)) {
